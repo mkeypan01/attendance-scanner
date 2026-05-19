@@ -37,7 +37,7 @@
       message.innerText = "カメラを準備中...";
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" } // リアカメラ（QR読み取りに適している）
+          video: { facingMode: "user" }
         });
         video.srcObject = stream;
         video.play();
