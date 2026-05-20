@@ -2,73 +2,79 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>出退勤スキャナー (GitHub Pages)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>出退勤スキャナー</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
-    body { font-family: sans-serif; text-align: center; margin: 0; padding: 20px; transition: 0.3s; }
-    #video-container { position: relative; width: 100%; max-width: 400px; margin: 0 auto; }
-    #video { width: 100%; border: 5px solid #ccc; border-radius: 10px; background: #000; }
-    #message { font-size: 20px; font-weight: bold; margin-top: 20px; min-height: 3em; }
-    .btn-group { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
-    .mode-btn { padding: 15px 25px; font-size: 18px; border: none; border-radius: 5px; cursor: pointer; background: #ddd; }
-    .active-in { background: #007bff !important; color: white; }
-    .active-out { background: #dc3545 !important; color: white; }
-    #start-btn { padding: 15px 30px; font-size: 18px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
-    .success { background-color: #d4edda !important; }
+    body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; overflow: hidden; }
+    #menu-view, #scan-view { display: flex; flex-direction: column; height: 100%; width: 100%; position: absolute; top: 0; left: 0; }
+    .btn-main { flex: 1; border: none; font-size: 40px; font-weight: bold; color: white; cursor: pointer; }
+    #btn-in { background-color: #007bff; }
+    #btn-out { background-color: #dc3545; }
+    #scan-view { display: none; background: #000; }
+    #video-container { flex: 1; position: relative; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center; }
+    #video { width: 100%; height: 100%; object-fit: cover; }
+    #btn-back { height: 20%; background: #6c757d; border: none; color: white; font-size: 24px; font-weight: bold; }
+    #overlay-msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 24px; text-align: center; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 10px; }
+    .success-flash { background-color: #28a745 !important; }
+    .success-msg { color: white; font-size: 32px; font-weight: bold; }
   </style>
 </head>
 <body>
-  <h2>出退勤スキャナー</h2>
-  
-  <div class="btn-group">
-    <button id="btn-in" class="mode-btn active-in" onclick="setMode('出勤')">出勤</button>
-    <button id="btn-out" class="mode-btn" onclick="setMode('退勤')">退勤</button>
+
+  <div id="menu-view">
+    <button id="btn-in" class="btn-main" onclick="openScanner('出勤')">出 勤</button>
+    <button id="btn-out" class="btn-main" onclick="openScanner('退勤')">退 勤</button>
   </div>
 
-  <div id="video-container">
-    <video id="video" playsinline></video>
+  <div id="scan-view">
+    <div id="video-container">
+      <video id="video" playsinline></video>
+      <div id="overlay-msg">QRをスキャンしてください</div>
+    </div>
+    <button id="btn-back" onclick="closeScanner()">戻る</button>
   </div>
-  
-  <div style="margin-top:20px;">
-    <button id="start-btn" onclick="startCamera()">カメラを起動する</button>
-  </div>
-  
-  <div id="message">モードを選んでカメラを起動してください</div>
-  
-  <audio id="sound-success" src="https://the-poker.com/sound/pipi.mp3" preload="auto"></audio>
+
+  <audio id="sound-success" src="https://soundeffect-lab.info/sound/button/mp3/decision35.mp3" preload="auto"></audio>
 
   <script>
-    // ★GASのWebアプリURLに差し替えてください★
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzqf4RW35Cp1xRpIVmrK6R80xpE_k8voUv2J4RJGEEy0x8yoRwHTNeG2XiQWcOoe_UV/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxRmc7RAjqFjD_jKDuHM7x5BhXX3wFrpdZgumcKIxNDlMjl_t4P5jpMnu0UfBwjG7OQ/exec";
 
-    let currentMode = '出勤';
+    let currentMode = '';
     let isProcessing = false;
+    let videoStream = null;
     const video = document.getElementById('video');
-    const message = document.getElementById('message');
     const soundSuccess = document.getElementById('sound-success');
 
-    function setMode(mode) {
+    async function openScanner(mode) {
       currentMode = mode;
-      document.getElementById('btn-in').classList.toggle('active-in', mode === '出勤');
-      document.getElementById('btn-out').classList.toggle('active-out', mode === '退勤');
-    }
-
-    async function startCamera() {
-      document.getElementById('start-btn').style.display = 'none';
+      isProcessing = false;
+      document.getElementById('menu-view').style.display = 'none';
+      document.getElementById('scan-view').style.display = 'flex';
+      document.getElementById('overlay-msg').innerText = mode + "スキャン中...";
+      
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-        video.srcObject = stream;
+        videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+        video.srcObject = videoStream;
         video.play();
-        message.innerText = currentMode + "QRをスキャンしてください";
         requestAnimationFrame(tick);
       } catch (err) {
-        message.innerHTML = "<span style='color:red;'>カメラエラー: " + err + "</span>";
+        alert("カメラエラー: " + err);
+        closeScanner();
       }
     }
 
+    function closeScanner() {
+      if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+      }
+      document.getElementById('menu-view').style.display = 'flex';
+      document.getElementById('scan-view').style.display = 'none';
+      document.getElementById('scan-view').classList.remove('success-flash');
+    }
+
     function tick() {
-      if (video.readyState === video.HAVE_ENOUGH_DATA && !isProcessing) {
+      if (video.readyState === video.HAVE_ENOUGH_DATA && !isProcessing && document.getElementById('scan-view').style.display === 'flex') {
         const canvas = document.createElement('canvas');
         canvas.height = video.videoHeight; canvas.width = video.videoWidth;
         const ctx = canvas.getContext('2d');
@@ -77,18 +83,18 @@
         if (code) {
           isProcessing = true;
           handleScan(code.data);
+          return;
         }
       }
-      requestAnimationFrame(tick);
+      if (!isProcessing) requestAnimationFrame(tick);
     }
 
     async function handleScan(staffId) {
-      message.innerText = "データ送信中...";
+      document.getElementById('overlay-msg').innerText = "送信中...";
       try {
-        // text/plainで送ることでCORSのプリフライトを回避
         const response = await fetch(GAS_URL, {
           method: "POST",
-          mode: "cors", 
+          mode: "cors",
           headers: { "Content-Type": "text/plain" },
           body: JSON.stringify({ staffId: staffId, type: currentMode })
         });
@@ -96,20 +102,16 @@
         
         if (res.success) {
           try { soundSuccess.play(); } catch(e) {}
-          document.body.classList.add('success');
-          message.innerHTML = `ID:${res.staffId}<br>${res.status}完了<br>${res.time}`;
-        } else {
-          throw new Error(res.message);
+          document.getElementById('scan-view').classList.add('success-flash');
+          document.getElementById('overlay-msg').innerHTML = `<span class="success-msg">${res.status}完了<br>ID:${res.staffId}</span>`;
         }
       } catch (err) {
-        message.innerHTML = "<span style='color:red;'>送信失敗: " + err + "</span>";
+        alert("通信エラー: " + err);
       }
 
       setTimeout(() => {
-        document.body.classList.remove('success');
-        message.innerText = currentMode + "QRをスキャンしてください";
-        isProcessing = false;
-      }, 3000);
+        closeScanner();
+      }, 2000);
     }
   </script>
 </body>
