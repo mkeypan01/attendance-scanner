@@ -6,33 +6,69 @@
   <title>出退勤スキャナー</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
-    body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; overflow: hidden; }
-    #menu-view, #scan-view { display: flex; flex-direction: column; height: 100%; width: 100%; position: absolute; top: 0; left: 0; }
-    .btn-main { flex: 1; border: none; font-size: 40px; font-weight: bold; color: white; cursor: pointer; }
-    #btn-in { background-color: #007bff; }
-    #btn-out { background-color: #dc3545; }
-    #scan-view { display: none; background: #000; }
-    #video-container { flex: 1; position: relative; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center; }
+    :root {
+      --bg-color: #f0f2f5;
+      --in-color: #4facfe;
+      --in-hover: #00f2fe;
+      --out-color: #f093fb;
+      --out-hover: #f5576c;
+      --back-color: #6c757d;
+      --success-color: #28a745;
+    }
+    body, html { 
+      margin: 0; padding: 0; height: 100%; 
+      font-family: 'Helvetica Neue', Arial, sans-serif; 
+      background-color: var(--bg-color);
+      transition: background-color 0.4s ease;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .app-container {
+      width: 90%; max-width: 450px; height: 85%;
+      background: white; border-radius: 24px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      display: flex; flex-direction: column; overflow: hidden;
+      position: relative;
+    }
+    #menu-view { flex: 1; display: flex; flex-direction: column; padding: 20px; gap: 15px; }
+    .header { text-align: center; padding: 10px 0; color: #333; }
+    .header h2 { margin: 0; font-size: 24px; }
+    .btn-main { 
+      flex: 1; border: none; border-radius: 16px;
+      font-size: 32px; font-weight: bold; color: white; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    #btn-in { background: linear-gradient(135deg, var(--in-color), var(--in-hover)); }
+    #btn-out { background: linear-gradient(135deg, var(--out-color), var(--out-hover)); }
+    #scan-view { display: none; flex-direction: column; height: 100%; width: 100%; }
+    #video-container { flex: 1; position: relative; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
     #video { width: 100%; height: 100%; object-fit: cover; }
-    #btn-back { height: 20%; background: #6c757d; border: none; color: white; font-size: 24px; font-weight: bold; }
-    #overlay-msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 24px; text-align: center; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 10px; }
-    .success-flash { background-color: #28a745 !important; }
-    .success-msg { color: white; font-size: 32px; font-weight: bold; }
+    #btn-back { height: 80px; background: var(--back-color); border: none; color: white; font-size: 20px; font-weight: bold; cursor: pointer; }
+    #overlay-msg { 
+      position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+      color: white; font-size: 18px; text-align: center; 
+      background: rgba(0,0,0,0.6); padding: 12px 24px; border-radius: 50px; width: 80%;
+    }
+    body.success-flash { background-color: var(--success-color); }
+    .success-msg { color: #fff; font-size: 28px; font-weight: bold; line-height: 1.4; }
   </style>
 </head>
 <body>
 
-  <div id="menu-view">
-    <button id="btn-in" class="btn-main" onclick="openScanner('出勤')">出 勤</button>
-    <button id="btn-out" class="btn-main" onclick="openScanner('退勤')">退 勤</button>
-  </div>
-
-  <div id="scan-view">
-    <div id="video-container">
-      <video id="video" playsinline></video>
-      <div id="overlay-msg">QRをスキャンしてください</div>
+  <div class="app-container">
+    <div id="menu-view">
+      <div class="header"><h2>出退勤スキャナー</h2></div>
+      <button id="btn-in" class="btn-main" onclick="openScanner('出勤')">出 勤</button>
+      <button id="btn-out" class="btn-main" onclick="openScanner('退勤')">退 勤</button>
     </div>
-    <button id="btn-back" onclick="closeScanner()">戻る</button>
+
+    <div id="scan-view">
+      <div id="video-container">
+        <video id="video" playsinline></video>
+        <div id="overlay-msg">QRコードをスキャン</div>
+      </div>
+      <button id="btn-back" onclick="closeScanner()">キャンセル</button>
+    </div>
   </div>
 
   <audio id="sound-success" src="https://soundeffect-lab.info/sound/button/mp3/decision35.mp3" preload="auto"></audio>
@@ -51,7 +87,6 @@
       isProcessing = false;
       document.getElementById('menu-view').style.display = 'none';
       document.getElementById('scan-view').style.display = 'flex';
-      document.getElementById('overlay-msg').innerText = mode + "スキャン中...";
       
       try {
         videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
@@ -70,7 +105,7 @@
       }
       document.getElementById('menu-view').style.display = 'flex';
       document.getElementById('scan-view').style.display = 'none';
-      document.getElementById('scan-view').classList.remove('success-flash');
+      document.body.classList.remove('success-flash');
     }
 
     function tick() {
@@ -80,7 +115,9 @@
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
-        if (code) {
+        
+        // バリデーション: 数字4桁のみ
+        if (code && /^\d{4}$/.test(code.data)) {
           isProcessing = true;
           handleScan(code.data);
           return;
@@ -99,19 +136,17 @@
           body: JSON.stringify({ staffId: staffId, type: currentMode })
         });
         const res = await response.json();
-        
         if (res.success) {
           try { soundSuccess.play(); } catch(e) {}
-          document.getElementById('scan-view').classList.add('success-flash');
+          document.body.classList.add('success-flash');
           document.getElementById('overlay-msg').innerHTML = `<span class="success-msg">${res.status}完了<br>ID:${res.staffId}</span>`;
+          setTimeout(() => { closeScanner(); }, 2000);
         }
       } catch (err) {
-        alert("通信エラー: " + err);
+        alert("通信失敗: " + err);
+        isProcessing = false;
+        document.getElementById('overlay-msg').innerText = "QRコードをスキャン";
       }
-
-      setTimeout(() => {
-        closeScanner();
-      }, 2000);
     }
   </script>
 </body>
