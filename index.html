@@ -6,7 +6,7 @@
   <title>出退勤スキャナー</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
-    /* CSSはGAS版と共通 */
+    /* スタイルはGAS版と共通 */
     :root {
       --bg-color: #f0f2f5;
       --in-color: #4facfe;
@@ -17,28 +17,20 @@
       --success-color: #28a745;
     }
     body, html { 
-      margin: 0; padding: 0; height: 100%; 
-      font-family: 'Helvetica Neue', Arial, sans-serif; 
-      background-color: var(--bg-color);
-      transition: background-color 0.4s ease;
+      margin: 0; padding: 0; height: 100%; font-family: sans-serif; 
+      background-color: var(--bg-color); transition: background-color 0.4s ease;
       display: flex; align-items: center; justify-content: center;
     }
     .app-container {
-      width: 95%; max-width: 500px; height: 90%;
-      background: white; border-radius: 24px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-      display: flex; flex-direction: column; overflow: hidden;
-      position: relative;
+      width: 95%; max-width: 500px; height: 90%; background: white; border-radius: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; position: relative;
     }
     #menu-view { flex: 1; display: flex; flex-direction: column; padding: 30px 20px; gap: 20px; justify-content: center; }
     .header { text-align: center; margin-bottom: 20px; color: #333; }
     .header h2 { margin: 0; font-size: 26px; }
     .btn-main { 
-      width: 100%; height: 160px; border: none; border-radius: 20px;
-      font-size: 40px; font-weight: bold; color: white; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: transform 0.2s;
-      box-sizing: border-box;
+      width: 100%; height: 160px; border: none; border-radius: 20px; font-size: 40px; font-weight: bold; color: white; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: transform 0.2s; box-sizing: border-box;
     }
     #btn-in { background: linear-gradient(135deg, var(--in-color), var(--in-hover)); }
     #btn-out { background: linear-gradient(135deg, var(--out-color), var(--out-hover)); }
@@ -49,7 +41,7 @@
     #overlay-msg { 
       position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
       color: white; font-size: 18px; text-align: center; 
-      background: rgba(0,0,0,0.6); padding: 12px 24px; border-radius: 50px; width: 85%;
+      background: rgba(0,0,0,0.6); padding: 12px 24px; border-radius: 50px; width: 85%; pointer-events: none;
     }
     body.success-flash { background-color: var(--success-color); }
     .success-msg { color: #fff; font-size: 30px; font-weight: bold; line-height: 1.4; }
@@ -59,11 +51,10 @@
 
   <div class="app-container">
     <div id="menu-view">
-      <div class="header"><h2>出退勤システム</h2></div>
+      <div class="header"><h2>出退勤スキャナー</h2></div>
       <button id="btn-in" class="btn-main" onclick="openScanner('出勤')">出 勤</button>
       <button id="btn-out" class="btn-main" onclick="openScanner('退勤')">退 勤</button>
     </div>
-
     <div id="scan-view">
       <div id="video-container">
         <video id="video" playsinline></video>
@@ -76,51 +67,41 @@
   <audio id="sound-success" src="https://www.springin.org/wp-content/uploads/2022/06/%E6%B1%BA%E5%AE%9A1.mp3" preload="auto"></audio>
 
   <script>
+    // ★ここを書き換えてください★
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxRmc7RAjqFjD_jKDuHM7x5BhXX3wFrpdZgumcKIxNDlMjl_t4P5jpMnu0UfBwjG7OQ/exec";
 
     let currentMode = '';
     let isProcessing = false;
     let videoStream = null;
     let scanTimer = null;
-    let wakeLock = null; // ★スリープ防止用
+    let wakeLock = null;
 
     const video = document.getElementById('video');
     const overlayMsg = document.getElementById('overlay-msg');
     const soundSuccess = document.getElementById('sound-success');
 
-    // ★スリープ防止をリクエストする関数
     async function requestWakeLock() {
       if ('wakeLock' in navigator) {
-        try {
-          wakeLock = await navigator.wakeLock.request('screen');
-          console.log('Wake Lock is active');
-        } catch (err) {
-          console.error(`${err.name}, ${err.message}`);
-        }
+        try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
       }
     }
 
-    // ★音を「アンロック」する関数
     function unlockAudio() {
       soundSuccess.play().then(() => {
         soundSuccess.pause();
         soundSuccess.currentTime = 0;
       }).catch(e => console.log("Audio unlock failed:", e));
     }
-    
+
     async function openScanner(mode) {
       currentMode = mode;
       isProcessing = false;
-      
-      // ★1. ユーザー操作のタイミングでスリープ防止を起動
-      requestWakeLock();
-      
-      // ★2. ユーザー操作のタイミングで音をアンロック
-      unlockAudio();
-
       overlayMsg.innerText = mode + "QRをスキャン中...";
       document.body.classList.remove('success-flash');
       
+      await requestWakeLock();
+      unlockAudio();
+
       document.getElementById('menu-view').style.display = 'none';
       document.getElementById('scan-view').style.display = 'flex';
       
@@ -130,33 +111,27 @@
       }, 30000);
 
       try {
-        videoStream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } } 
-        });
+        videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
         video.srcObject = videoStream;
         video.play();
         requestAnimationFrame(tick);
       } catch (err) {
-        alert("カメラを起動できませんでした。");
+        alert("カメラエラー: " + err);
         closeScanner();
       }
     }
-    
+
     function closeScanner() {
       if (scanTimer) clearTimeout(scanTimer);
-      
-      // ★スリープ防止を解除
       if (wakeLock !== null) {
         wakeLock.release().then(() => { wakeLock = null; });
       }
-
       if (videoStream) {
         videoStream.getTracks().forEach(track => track.stop());
       }
       document.getElementById('menu-view').style.display = 'flex';
       document.getElementById('scan-view').style.display = 'none';
       document.body.classList.remove('success-flash');
-      overlayMsg.innerText = "QRコードをスキャン";
     }
 
     function tick() {
@@ -166,36 +141,8 @@
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
-        
         if (code && /^\d{4}$/.test(code.data)) {
           isProcessing = true;
           if (scanTimer) clearTimeout(scanTimer);
           handleScan(code.data);
           return;
-        }
-      }
-      if (!isProcessing) requestAnimationFrame(tick);
-    }
-
-    async function handleScan(staffId) {
-      overlayMsg.innerText = "送信中...";
-      try {
-        const response = await fetch(GAS_URL, {
-          method: "POST",
-          mode: "cors",
-          headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ staffId: staffId, type: currentMode })
-        });
-        const res = await response.json();
-        if (res.success) {
-          try { soundSuccess.play(); } catch(e) {}
-          document.body.classList.add('success-flash');
-          overlayMsg.innerHTML = `<span class="success-msg">${res.status}完了<br>ID:${res.staffId}</span>`;
-          setTimeout(() => {
-            closeScanner();
-          }, 2000);
-        }
-      } catch (err) {
-        alert("通信失敗: " + err);
-        isProcessing = false;
-        overlayMsg.innerText = currentMode + "QR
