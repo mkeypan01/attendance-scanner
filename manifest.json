@@ -1,6 +1,6 @@
 {
   "name": "出退勤スキャナー",
-  "short_name": "出退勤",
+  "short_name": "出退勤スキャナー",
   "start_url": "index.html",
   "display": "fullscreen",
   "background_color": "#f0f2f5",
