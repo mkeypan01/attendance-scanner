@@ -7,41 +7,40 @@
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
     :root {
-      --bg-color: #f0f2f5;
       --in-color: #4facfe;
       --out-color: #f093fb;
-      --back-color: #6c757d;
       --success-color: #28a745;
     }
-    body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; background-color: var(--bg-color); display: flex; align-items: center; justify-content: center; overflow: hidden; transition: background-color 0.4s; }
+    body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; overflow: hidden; background: #fff; }
     
-    .app-container { width: 100%; height: 100%; background: white; display: flex; flex-direction: column; }
+    .app-container { width: 100%; height: 100%; display: flex; flex-direction: column; }
 
-    /* メニュー画面 */
     #menu-view { flex: 1; display: flex; flex-direction: column; }
-    
-    /* 上半分：ボタンエリア */
-    .top-half { height: 50%; display: flex; flex-direction: column; border-bottom: 2px dashed #ccc; }
-    .header { text-align: center; padding: 10px 0; background: #fff; }
-    .header h2 { margin: 5px 0; font-size: 20px; color: #555; }
-    .btn-group { flex: 1; display: flex; padding: 10px; gap: 10px; }
-    .btn-main { flex: 1; border: none; border-radius: 12px; font-size: 32px; font-weight: bold; color: white; cursor: pointer; }
-    #btn-in { background: linear-gradient(135deg, #4facfe, #00f2fe); }
-    #btn-out { background: linear-gradient(135deg, #f093fb, #f5576c); }
 
-    /* 下半分：メッセージエリア */
-    .bottom-half { height: 50%; padding: 20px; box-sizing: border-box; background: #fafafa; display: flex; flex-direction: column; }
-    .msg-label { font-size: 14px; color: #888; margin-bottom: 10px; font-weight: bold; }
-    #announcement-text { flex: 1; font-size: 20px; color: #333; line-height: 1.6; white-space: pre-wrap; overflow-y: auto; }
+    /* 上部エリア：ボタンを横に2つ並べる（正方形） */
+    .button-row { display: flex; width: 100%; }
+    .btn-main { 
+      width: 50%; aspect-ratio: 1 / 1; border: none; 
+      font-size: 32px; font-weight: bold; color: white; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    #btn-in { background: linear-gradient(135deg, #4facfe, #00f2fe); border-right: 1px solid rgba(255,255,255,0.3); }
+    #btn-out { background: linear-gradient(135deg, #f093fb, #f5576c); }
+    .btn-main small { font-size: 14px; margin-top: 5px; opacity: 0.8; }
+
+    /* 下部エリア：連絡事項 */
+    .announcement-container { flex: 1; display: flex; flex-direction: column; background: #fafafa; overflow: hidden; }
+    .header-label { padding: 10px; background: #eee; font-size: 13px; font-weight: bold; color: #666; border-bottom: 1px solid #ddd; }
+    #announcement-text { flex: 1; padding: 15px; font-size: 20px; line-height: 1.6; color: #333; overflow-y: auto; white-space: pre-wrap; }
 
     /* スキャン画面 */
-    #scan-view { display: none; flex-direction: column; height: 100%; width: 100%; position: absolute; top: 0; left: 0; background: #000; }
-    #video-container { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    #scan-view { display: none; flex-direction: column; height: 100%; width: 100%; position: absolute; top: 0; left: 0; background: #000; z-index: 100; }
+    #video-container { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; }
     #video { width: 100%; height: 100%; object-fit: cover; }
-    #btn-back { height: 80px; background: var(--back-color); border: none; color: white; font-size: 22px; font-weight: bold; }
-    #overlay-msg { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: white; font-size: 18px; text-align: center; background: rgba(0,0,0,0.6); padding: 12px 24px; border-radius: 50px; width: 85%; pointer-events: none; }
+    #btn-back { height: 80px; background: #666; border: none; color: white; font-size: 20px; font-weight: bold; }
+    #overlay-msg { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: white; font-size: 18px; text-align: center; background: rgba(0,0,0,0.6); padding: 12px 24px; border-radius: 50px; width: 80%; pointer-events: none; }
 
-    body.success-flash { background-color: var(--success-color); }
+    body.success-flash { background-color: var(--success-color) !important; }
     .success-msg { color: #fff; font-size: 28px; font-weight: bold; }
   </style>
 </head>
@@ -49,22 +48,16 @@
 
   <div class="app-container">
     <div id="menu-view">
-      <!-- 上半分：操作系 -->
-      <div class="top-half">
-        <div class="header"><h2>出退勤スキャナー</h2></div>
-        <div class="btn-group">
-          <button id="btn-in" class="btn-main" onclick="openScanner('出勤')">出勤</button>
-          <button id="btn-out" class="btn-main" onclick="openScanner('退勤')">退勤</button>
-        </div>
+      <div class="button-row">
+        <button id="btn-in" class="btn-main" onclick="openScanner('出勤')">出勤<br><small>Clock In</small></button>
+        <button id="btn-out" class="btn-main" onclick="openScanner('退勤')">退勤<br><small>Clock Out</small></button>
       </div>
-      <!-- 下半分：お知らせ -->
-      <div class="bottom-half">
-        <div class="msg-label">【 連絡事項 】</div>
-        <div id="announcement-text">お知らせを読み込み中...</div>
+      <div class="announcement-container">
+        <div class="header-label">📢 連絡事項</div>
+        <div id="announcement-text">読み込み中...</div>
       </div>
     </div>
 
-    <!-- スキャン画面 -->
     <div id="scan-view">
       <div id="video-container">
         <video id="video" playsinline></video>
@@ -74,88 +67,51 @@
     </div>
   </div>
 
-  <audio id="sound-success" src="https://www.springin.org/wp-content/uploads/2022/06/%E6%B1%BA%E5%AE%9A1.mp3" preload="auto"></audio>
+  <audio id="sound-success" src="" preload="auto"></audio>
 
   <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyaTtACK4QBplXCr2h2eOo6-ShyBTGq0-xPhtCs411R3j40-Ee5HAPRpIwVZ7b1Tgjq/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyqk8zDqi17WXOfzz1XLbjRYerRfQyxlZcGnySkKRQm5shpKZRAjkWZ6ov4ft3w9Q8/exec";
+    let currentMode = '', isProcessing = false, videoStream = null, scanTimer = null, wakeLock = null;
+    const video = document.getElementById('video'), overlayMsg = document.getElementById('overlay-msg');
+    const soundSuccess = document.getElementById('sound-success'), announceArea = document.getElementById('announcement-text');
 
-    let currentMode = '';
-    let isProcessing = false;
-    let videoStream = null;
-    let scanTimer = null;
-    let wakeLock = null;
-
-    const video = document.getElementById('video');
-    const overlayMsg = document.getElementById('overlay-msg');
-    const soundSuccess = document.getElementById('sound-success');
-    const announceArea = document.getElementById('announcement-text');
-
-    // お知らせを取得する
     async function loadAnnouncement() {
       try {
         const response = await fetch(GAS_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain" },
+          method: "POST", headers: { "Content-Type": "text/plain" },
           body: JSON.stringify({ action: "getAnnouncement" })
         });
         const res = await response.json();
         if (res.success) announceArea.innerText = res.message;
-      } catch (err) {
-        announceArea.innerText = "お知らせの取得に失敗しました。";
-      }
+      } catch (err) { announceArea.innerText = "エラー：連絡事項を取得できません。"; }
     }
-
-    // 起動時にお知らせを読み込む
     window.onload = loadAnnouncement;
 
-    async function requestWakeLock() {
-      if ('wakeLock' in navigator) {
-        try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
-      }
-    }
-
-    function unlockAudio() {
-      if (soundSuccess) {
-        soundSuccess.play().then(() => { soundSuccess.pause(); soundSuccess.currentTime = 0; }).catch(e => {});
-      }
-    }
+    function unlockAudio() { if (soundSuccess) { soundSuccess.play().then(() => { soundSuccess.pause(); soundSuccess.currentTime = 0; }).catch(() => {}); } }
+    async function requestWakeLock() { if ('wakeLock' in navigator) { try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {} } }
 
     async function openScanner(mode) {
-      currentMode = mode;
-      isProcessing = false;
+      currentMode = mode; isProcessing = false;
       overlayMsg.innerText = mode + "QRをスキャン中...";
       document.body.classList.remove('success-flash');
-      unlockAudio();
-      requestWakeLock();
-
-      document.getElementById('menu-view').style.opacity = '0'; // 瞬間的に消す
-      setTimeout(() => {
-        document.getElementById('menu-view').style.display = 'none';
-        document.getElementById('scan-view').style.display = 'flex';
-      }, 50);
-      
-      scanTimer = setTimeout(() => { alert("30秒経過しましたので戻ります。"); closeScanner(); }, 30000);
-
+      unlockAudio(); requestWakeLock();
+      document.getElementById('menu-view').style.display = 'none';
+      document.getElementById('scan-view').style.display = 'flex';
+      scanTimer = setTimeout(() => { alert("30秒経過しました。"); closeScanner(); }, 30000);
       try {
         videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-        video.srcObject = videoStream;
-        video.play();
-        requestAnimationFrame(tick);
-      } catch (err) {
-        alert("カメラエラー: " + err);
-        closeScanner();
-      }
+        video.srcObject = videoStream; video.play(); requestAnimationFrame(tick);
+      } catch (err) { alert("カメラエラー"); closeScanner(); }
     }
 
     function closeScanner() {
       if (scanTimer) clearTimeout(scanTimer);
-      if (wakeLock) { wakeLock.release().then(() => { wakeLock = null; }); }
-      if (videoStream) { videoStream.getTracks().forEach(track => track.stop()); videoStream = null; }
+      if (wakeLock) wakeLock.release().then(() => wakeLock = null);
+      if (videoStream) videoStream.getTracks().forEach(track => track.stop());
       document.getElementById('menu-view').style.display = 'flex';
-      document.getElementById('menu-view').style.opacity = '1';
       document.getElementById('scan-view').style.display = 'none';
       document.body.classList.remove('success-flash');
-      loadAnnouncement(); // 戻ったときにお知らせを再更新
+      loadAnnouncement();
     }
 
     function tick() {
@@ -178,24 +134,17 @@
     async function handleScan(staffId) {
       overlayMsg.innerText = "送信中...";
       try {
-        const response = await fetch(GAS_URL, {
-          method: "POST",
-          mode: "cors",
-          headers: { "Content-Type": "text/plain" },
+        const res = await fetch(GAS_URL, {
+          method: "POST", mode: "cors", headers: { "Content-Type": "text/plain" },
           body: JSON.stringify({ staffId: staffId, type: currentMode })
-        });
-        const res = await response.json();
+        }).then(r => r.json());
         if (res.success) {
-          if (soundSuccess) soundSuccess.play().catch(e => {});
+          if (soundSuccess) soundSuccess.play().catch(() => {});
           document.body.classList.add('success-flash');
           overlayMsg.innerHTML = `<span class="success-msg">${res.status}完了<br>ID:${res.staffId}</span>`;
-          setTimeout(() => { closeScanner(); }, 2000);
+          setTimeout(closeScanner, 2000);
         }
-      } catch (err) {
-        alert("通信失敗: " + err);
-        isProcessing = false;
-        overlayMsg.innerText = currentMode + "QRをスキャン中...";
-      }
+      } catch (err) { alert("通信失敗"); isProcessing = false; }
     }
   </script>
 </body>
