@@ -6,7 +6,6 @@
   <title>出退勤スキャナー</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
-    /* CSSはGAS版と同じ */
     :root {
       --bg-color: #f0f2f5;
       --in-color: #4facfe;
@@ -24,31 +23,41 @@
       display: flex; align-items: center; justify-content: center;
     }
     .app-container {
-      width: 90%; height: 85%;
+      width: 95%; max-width: 500px; height: 90%;
       background: white; border-radius: 24px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.1);
       display: flex; flex-direction: column; overflow: hidden;
       position: relative;
     }
-    #menu-view { flex: 1; display: flex; flex-direction: column; padding: 20px; gap: 15px; }
-    .header { text-align: center; padding: 10px 0; color: #333; }
+    /* メニュー画面：ボタンを中央に寄せ、横長にする */
+    #menu-view { 
+      flex: 1; display: flex; flex-direction: column; 
+      padding: 30px 20px; gap: 20px; justify-content: center; 
+    }
+    .header { text-align: center; margin-bottom: 10px; color: #333; }
     .header h2 { margin: 0; font-size: 24px; }
+
+    /* ボタンのデザイン：横長に変更 */
     .btn-main { 
-      flex: 1; border: none; border-radius: 16px;
-      font-size: 32px; font-weight: bold; color: white; cursor: pointer;
+      width: 100%; height: 140px; border: none; border-radius: 20px;
+      font-size: 40px; font-weight: bold; color: white; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       transition: transform 0.2s;
     }
     #btn-in { background: linear-gradient(135deg, var(--in-color), var(--in-hover)); }
     #btn-out { background: linear-gradient(135deg, var(--out-color), var(--out-hover)); }
+    .btn-main:active { transform: scale(0.97); }
+
+    /* スキャン画面 */
     #scan-view { display: none; flex-direction: column; height: 100%; width: 100%; }
     #video-container { flex: 1; position: relative; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
     #video { width: 100%; height: 100%; object-fit: cover; }
-    #btn-back { height: 80px; background: var(--back-color); border: none; color: white; font-size: 20px; font-weight: bold; cursor: pointer; }
+    #btn-back { height: 90px; background: var(--back-color); border: none; color: white; font-size: 22px; font-weight: bold; cursor: pointer; }
+    
     #overlay-msg { 
       position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
       color: white; font-size: 18px; text-align: center; 
-      background: rgba(0,0,0,0.6); padding: 12px 24px; border-radius: 50px; width: 80%; pointer-events: none;
+      background: rgba(0,0,0,0.6); padding: 12px 24px; border-radius: 50px; width: 85%; pointer-events: none;
     }
     body.success-flash { background-color: var(--success-color); }
     .success-msg { color: #fff; font-size: 28px; font-weight: bold; line-height: 1.4; }
@@ -72,31 +81,70 @@
     </div>
   </div>
 
-  <audio id="sound-success" src="https://www.springin.org/wp-content/uploads/2022/06/%E6%B1%BA%E5%AE%9A1.mp3" preload="auto"></audio>
+  <!-- ★mp3のURLをsrcに入れてください★ -->
+  <audio id="sound-success" src="" preload="auto"></audio>
 
   <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxRmc7RAjqFjD_jKDuHM7x5BhXX3wFrpdZgumcKIxNDlMjl_t4P5jpMnu0UfBwjG7OQ/exec";
+    // ★GASのURLをここに入れてください★
+    const GAS_URL = "";
 
     let currentMode = '';
     let isProcessing = false;
     let videoStream = null;
+    let scanTimer = null; // 30秒タイマー
+    let wakeLock = null;  // スリープ防止
+
     const video = document.getElementById('video');
     const overlayMsg = document.getElementById('overlay-msg');
     const soundSuccess = document.getElementById('sound-success');
+
+    // スリープ防止機能をリクエストする関数
+    async function requestWakeLock() {
+      if ('wakeLock' in navigator) {
+        try {
+          wakeLock = await navigator.wakeLock.request('screen');
+        } catch (err) {
+          console.error("Wake Lock Error:", err);
+        }
+      }
+    }
+
+    // 音声をアンロックする関数（ボタンを押した瞬間に実行）
+    function unlockAudio() {
+      if (soundSuccess) {
+        soundSuccess.play().then(() => {
+          soundSuccess.pause();
+          soundSuccess.currentTime = 0;
+        }).catch(e => console.log("Audio unlock failed"));
+      }
+    }
 
     async function openScanner(mode) {
       currentMode = mode;
       isProcessing = false;
       
-      // 表示のリセット
+      // 1. UIのリセット
       overlayMsg.innerText = mode + "QRをスキャン中...";
       document.body.classList.remove('success-flash');
       
+      // 2. 音声のアンロックとスリープ防止の起動（ユーザー操作時のみ可能）
+      unlockAudio();
+      requestWakeLock();
+
       document.getElementById('menu-view').style.display = 'none';
       document.getElementById('scan-view').style.display = 'flex';
       
+      // 3. 30秒タイムアウト設定
+      if (scanTimer) clearTimeout(scanTimer);
+      scanTimer = setTimeout(() => {
+        alert("30秒経過しましたので、選択画面に戻ります。");
+        closeScanner();
+      }, 30000);
+
       try {
-        videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+        videoStream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } } 
+        });
         video.srcObject = videoStream;
         video.play();
         requestAnimationFrame(tick);
@@ -107,9 +155,20 @@
     }
 
     function closeScanner() {
+      // タイマー停止
+      if (scanTimer) clearTimeout(scanTimer);
+      
+      // スリープ防止解除
+      if (wakeLock !== null) {
+        wakeLock.release().then(() => { wakeLock = null; });
+      }
+
+      // カメラ停止
       if (videoStream) {
         videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
       }
+      
       document.getElementById('menu-view').style.display = 'flex';
       document.getElementById('scan-view').style.display = 'none';
       document.body.classList.remove('success-flash');
@@ -124,13 +183,17 @@
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
         
+        // 数字4桁バリデーション
         if (code && /^\d{4}$/.test(code.data)) {
           isProcessing = true;
+          if (scanTimer) clearTimeout(scanTimer); // スキャン成功でタイマー解除
           handleScan(code.data);
           return;
         }
       }
-      if (!isProcessing) requestAnimationFrame(tick);
+      if (!isProcessing && document.getElementById('scan-view').style.display === 'flex') {
+        requestAnimationFrame(tick);
+      }
     }
 
     async function handleScan(staffId) {
@@ -144,13 +207,20 @@
         });
         const res = await response.json();
         if (res.success) {
-          try { soundSuccess.play(); } catch(e) {}
+          // 音を鳴らす（すでにアンロック済み）
+          if (soundSuccess) {
+            soundSuccess.play().catch(e => console.log("Play failed"));
+          }
+          
           document.body.classList.add('success-flash');
           overlayMsg.innerHTML = `<span class="success-msg">${res.status}完了<br>ID:${res.staffId}</span>`;
           
           setTimeout(() => {
             closeScanner();
           }, 2000);
+        } else {
+          alert("エラー: " + res.message);
+          isProcessing = false;
         }
       } catch (err) {
         alert("通信失敗: " + err);
