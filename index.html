@@ -4,7 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>出退勤スキャナー</title>
+  
+  <!-- PWA設定 -->
   <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#4facfe">
+  
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').then((reg) => {
+          console.log('Service Worker registered.', reg);
+        });
+      });
+    }
+  </script>
+  
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
     :root {
@@ -12,52 +28,85 @@
       --out-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
       --success-color: #28a745;
     }
-    body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; overflow: hidden; background: #f0f2f5; }
+    body, html { margin: 0; padding: 0; height: 100%; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden; background: #f0f2f5; }
     
     .app-container { width: 100%; height: 100%; display: flex; flex-direction: column; }
 
     #menu-view { flex: 1; display: flex; flex-direction: column; background: #f0f2f5; }
 
+    /* タイトル */
     .title-header { text-align: center; padding: 15px 0 5px; }
-    .title-header h1 { margin: 0; font-size: 16px; color: #666; font-weight: bold; }
+    .title-header h1 { margin: 0; font-size: 16px; color: #666; font-weight: bold; letter-spacing: 1px; }
 
-    .button-container { display: flex; padding: 10px; gap: 12px; box-sizing: border-box; }
+    /* ボタンエリア */
+    .button-container { 
+      display: flex; 
+      padding: 10px; 
+      gap: 12px; 
+      box-sizing: border-box;
+    }
     .btn-main { 
-      flex: 1; aspect-ratio: 1 / 1; border: none; border-radius: 24px; 
-      font-size: 32px; font-weight: bold; color: white; cursor: pointer;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      box-shadow: 0 8px 15px rgba(0,0,0,0.15); transition: transform 0.1s;
+      flex: 1; 
+      aspect-ratio: 1 / 1; 
+      border: none; 
+      border-radius: 24px; 
+      font-size: 32px; 
+      font-weight: bold; 
+      color: white; 
+      cursor: pointer;
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: center;
+      box-shadow: 0 8px 15px rgba(0,0,0,0.15); /* ボタンの影 */
+      transition: transform 0.1s, box-shadow 0.1s;
     }
     #btn-in { background: var(--in-gradient); }
     #btn-out { background: var(--out-gradient); }
-    .btn-main:active { transform: scale(0.95); }
+    
+    /* ボタンを押した時の効果 */
+    .btn-main:active { 
+      transform: scale(0.95); 
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+    }
     .btn-main small { font-size: 14px; margin-top: 8px; opacity: 0.9; font-weight: normal; }
 
-    .announcement-container { flex: 1; display: flex; flex-direction: column; margin: 10px; background: white; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); overflow: hidden; }
+    /* お知らせエリア */
+    .announcement-container { 
+      flex: 1; 
+      display: flex; 
+      flex-direction: column; 
+      margin: 10px; 
+      background: white; 
+      border-radius: 20px; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      overflow: hidden; 
+    }
     .header-label { padding: 12px 16px; background: #f8f9fa; font-size: 12px; font-weight: bold; color: #999; border-bottom: 1px solid #eee; }
     #announcement-text { flex: 1; padding: 20px; font-size: 18px; line-height: 1.6; color: #333; overflow-y: auto; white-space: pre-wrap; }
-
-    /* 擬似省電力用オーバーレイ */
-    #blackout-overlay {
-      display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: black; z-index: 9999; cursor: pointer;
-    }
 
     /* スキャン画面 / 手入力画面 */
     .overlay-view { display: none; flex-direction: column; height: 100%; width: 100%; position: absolute; top: 0; left: 0; background: #000; z-index: 100; }
     #video-container { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; }
     #video { width: 100%; height: 100%; object-fit: cover; }
     
+    /* 手入力用 */
     #manual-view { background: #f0f2f5; justify-content: center; align-items: center; }
-    .manual-card { background: white; padding: 30px; border-radius: 24px; width: 85%; max-width: 320px; text-align: center; }
-    #input-id { width: 100%; font-size: 44px; text-align: center; padding: 12px; border: 2px solid #eee; border-radius: 16px; margin: 20px 0; }
-    .btn-ok { width: 100%; padding: 16px; font-size: 22px; font-weight: bold; color: white; background: #28a745; border: none; border-radius: 16px; }
+    .manual-card { background: white; padding: 30px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); width: 85%; max-width: 320px; text-align: center; }
+    #input-id { width: 100%; font-size: 44px; text-align: center; padding: 12px; border: 2px solid #eee; border-radius: 16px; margin: 20px 0; background: #f9f9f9; }
+    .btn-ok { width: 100%; padding: 16px; font-size: 22px; font-weight: bold; color: white; background: #28a745; border: none; border-radius: 16px; cursor: pointer; }
 
-    .btn-cancel { height: 85px; background: #444; border: none; color: white; font-size: 20px; font-weight: bold; }
+    .btn-cancel { height: 85px; background: #444; border: none; color: white; font-size: 20px; font-weight: bold; cursor: pointer; }
     #overlay-msg { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); color: white; font-size: 18px; text-align: center; background: rgba(0,0,0,0.75); padding: 12px 30px; border-radius: 50px; width: 80%; pointer-events: none; }
 
     body.success-flash { background-color: var(--success-color) !important; }
     .success-msg { color: #fff; font-size: 28px; font-weight: bold; }
+
+    /* 擬似省電力用オーバーレイのみ追加 */
+    #blackout-overlay {
+      display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: black; z-index: 9999; cursor: pointer;
+    }
   </style>
 </head>
 <body onmousedown="resetIdleTimer()" ontouchstart="resetIdleTimer()">
@@ -102,17 +151,37 @@
   <audio id="sound-success" src="あなたの音声URL" preload="auto"></audio>
 
   <script>
+    /* JavaScript部分は前回と同じ（変更なし） */
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyqk8zDqi17WXOfzz1XLbjRYerRfQyxlZcGnySkKRQm5shpKZRAjkWZ6ov4ft3w9Q8/exec";
+    
+    /* 擬似省電力用変数の追加 */
     const IDLE_TIME = 180000; // 3分 (ミリ秒)
-
-    let currentMode = '', isProcessing = false, videoStream = null, scanTimer = null, wakeLock = null;
     let idleTimer = null;
-
-    const video = document.getElementById('video'), overlayMsg = document.getElementById('overlay-msg');
-    const announceArea = document.getElementById('announcement-text'), inputId = document.getElementById('input-id'), soundSuccess = document.getElementById('sound-success');
     const blackout = document.getElementById('blackout-overlay');
 
-    // 1. お知らせ取得
+    let currentMode = '', isProcessing = false, videoStream = null, scanTimer = null, wakeLock = null;
+    const video = document.getElementById('video'), overlayMsg = document.getElementById('overlay-msg'), announceArea = document.getElementById('announcement-text'), inputId = document.getElementById('input-id'), soundSuccess = document.getElementById('sound-success');
+
+    /* 擬似省電力ロジックの追加 */
+    function resetIdleTimer() {
+      blackout.style.display = 'none';
+      clearTimeout(idleTimer);
+      // メニュー表示中のみタイマーを作動させる
+      if (document.getElementById('menu-view').style.display !== 'none') {
+        idleTimer = setTimeout(showBlackout, IDLE_TIME);
+      }
+    }
+    function showBlackout() {
+      blackout.style.display = 'block';
+    }
+    // 傾き検知での復帰
+    window.addEventListener('devicemotion', (event) => {
+      const acc = event.accelerationIncludingGravity;
+      if (!acc) return;
+      const totalAcc = Math.abs(acc.x) + Math.abs(acc.y) + Math.abs(acc.z);
+      if (totalAcc > 15) { resetIdleTimer(); }
+    });
+
     async function loadAnnouncement() {
       try {
         const response = await fetch(GAS_URL, {
@@ -123,62 +192,20 @@
         if (res.success) announceArea.innerText = res.message;
       } catch (err) { announceArea.innerText = "エラー：連絡事項を取得できません。"; }
     }
-
-    // 2. スリープ防止 (Wake Lock)
-    async function requestWakeLock() {
-      if ('wakeLock' in navigator) {
-        try {
-          wakeLock = await navigator.wakeLock.request('screen');
-          console.log("WakeLock Active");
-        } catch (err) { console.error("WakeLock Error:", err); }
-      }
-    }
-
-    // 3. 擬似省電力タイマー設定
-    function resetIdleTimer() {
-      // 真っ黒画面を隠す
-      blackout.style.display = 'none';
-      
-      // 既存タイマーをクリアして再設定
-      clearTimeout(idleTimer);
-      // カメラ起動中や打刻処理中でなければタイマーを作動させる
-      if (document.getElementById('menu-view').style.display !== 'none') {
-        idleTimer = setTimeout(showBlackout, IDLE_TIME);
-      }
-    }
-
-    function showBlackout() {
-      blackout.style.display = 'block';
-    }
-
-    // 4. 傾き検知 (スマホを動かした時に復帰)
-    window.addEventListener('devicemotion', (event) => {
-      const acc = event.accelerationIncludingGravity;
-      if (!acc) return;
-      // 一定以上の動きを検知したらタイマーリセット
-      const totalAcc = Math.abs(acc.x) + Math.abs(acc.y) + Math.abs(acc.z);
-      if (totalAcc > 15) { // 感度は必要に応じて調整
-        resetIdleTimer();
-      }
-    });
-
-    // 5. 初期化
+    
     window.onload = () => {
       loadAnnouncement();
-      resetIdleTimer();
-      // PWAとして起動した時などのためにWakeLockを試みる
-      requestWakeLock();
+      resetIdleTimer(); // タイマー開始
     };
 
     function unlockAudio() { if (soundSuccess) { soundSuccess.play().then(() => { soundSuccess.pause(); soundSuccess.currentTime = 0; }).catch(() => {}); } }
+    async function requestWakeLock() { if ('wakeLock' in navigator) { try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {} } }
 
     async function openScanner(mode) {
       currentMode = mode; isProcessing = false;
-      clearTimeout(idleTimer); // スキャン中は省電力タイマー停止
+      clearTimeout(idleTimer); // スキャン中は省電力タイマーをオフ
       document.body.classList.remove('success-flash');
-      unlockAudio(); 
-      await requestWakeLock(); // ボタン押下時に確実にWakeLockを起動
-      
+      unlockAudio(); requestWakeLock();
       try {
         videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
         document.getElementById('menu-view').style.display = 'none';
@@ -195,6 +222,7 @@
 
     function closeScanner() {
       if (scanTimer) clearTimeout(scanTimer);
+      if (wakeLock) wakeLock.release().then(() => wakeLock = null);
       if (videoStream) { videoStream.getTracks().forEach(track => track.stop()); videoStream = null; }
       document.getElementById('menu-view').style.display = 'flex';
       document.getElementById('scan-view').style.display = 'none';
@@ -203,8 +231,6 @@
       loadAnnouncement();
       resetIdleTimer(); // メニューに戻ったらタイマー再開
     }
-
-    // --- (以下、tick, submitManual, handleScan は前回と同じ) ---
 
     function tick() {
       if (video.readyState === video.HAVE_ENOUGH_DATA && !isProcessing && document.getElementById('scan-view').style.display === 'flex') {
@@ -247,13 +273,6 @@
           setTimeout(() => { if (isManual) location.reload(); else closeScanner(); }, 2000);
         }
       } catch (err) { alert("通信失敗"); isProcessing = false; }
-    }
-
-    // Service Worker 登録 (PWA用)
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').then(reg => console.log('SW registered')).catch(err => console.log('SW failed', err));
-      });
     }
   </script>
 </body>
