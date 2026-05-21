@@ -82,39 +82,74 @@
     let isProcessing = false;
     let videoStream = null;
     let scanTimer = null;
+    let wakeLock = null; // ★スリープ防止用
+
     const video = document.getElementById('video');
     const overlayMsg = document.getElementById('overlay-msg');
     const soundSuccess = document.getElementById('sound-success');
 
+    // ★スリープ防止をリクエストする関数
+    async function requestWakeLock() {
+      if ('wakeLock' in navigator) {
+        try {
+          wakeLock = await navigator.wakeLock.request('screen');
+          console.log('Wake Lock is active');
+        } catch (err) {
+          console.error(`${err.name}, ${err.message}`);
+        }
+      }
+    }
+
+    // ★音を「アンロック」する関数
+    function unlockAudio() {
+      soundSuccess.play().then(() => {
+        soundSuccess.pause();
+        soundSuccess.currentTime = 0;
+      }).catch(e => console.log("Audio unlock failed:", e));
+    }
+    
     async function openScanner(mode) {
       currentMode = mode;
       isProcessing = false;
       
+      // ★1. ユーザー操作のタイミングでスリープ防止を起動
+      requestWakeLock();
+      
+      // ★2. ユーザー操作のタイミングで音をアンロック
+      unlockAudio();
+
       overlayMsg.innerText = mode + "QRをスキャン中...";
       document.body.classList.remove('success-flash');
       
       document.getElementById('menu-view').style.display = 'none';
       document.getElementById('scan-view').style.display = 'flex';
       
-      // 30秒タイマー設定
       scanTimer = setTimeout(() => {
         alert("30秒経過しましたので、選択画面に戻ります。");
         closeScanner();
       }, 30000);
 
       try {
-        videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+        videoStream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } } 
+        });
         video.srcObject = videoStream;
         video.play();
         requestAnimationFrame(tick);
       } catch (err) {
-        alert("カメラエラー: " + err);
+        alert("カメラを起動できませんでした。");
         closeScanner();
       }
     }
-
+    
     function closeScanner() {
       if (scanTimer) clearTimeout(scanTimer);
+      
+      // ★スリープ防止を解除
+      if (wakeLock !== null) {
+        wakeLock.release().then(() => { wakeLock = null; });
+      }
+
       if (videoStream) {
         videoStream.getTracks().forEach(track => track.stop());
       }
