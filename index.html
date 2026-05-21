@@ -17,7 +17,11 @@
 
     #menu-view { flex: 1; display: flex; flex-direction: column; }
 
-    /* 上部エリア：ボタンを横に2つ並べる（正方形） */
+    /* タイトル */
+    .title-header { text-align: center; padding: 10px 0; background: #fff; border-bottom: 1px solid #eee; }
+    .title-header h1 { margin: 0; font-size: 18px; color: #333; }
+
+    /* 上部エリア：ボタン列 */
     .button-row { display: flex; width: 100%; }
     .btn-main { 
       width: 50%; aspect-ratio: 1 / 1; border: none; 
@@ -30,14 +34,25 @@
 
     /* 下部エリア：連絡事項 */
     .announcement-container { flex: 1; display: flex; flex-direction: column; background: #fafafa; overflow: hidden; }
-    .header-label { padding: 10px; background: #eee; font-size: 13px; font-weight: bold; color: #666; border-bottom: 1px solid #ddd; }
-    #announcement-text { flex: 1; padding: 15px; font-size: 20px; line-height: 1.6; color: #333; overflow-y: auto; white-space: pre-wrap; }
+    .header-label { padding: 8px 12px; background: #eee; font-size: 12px; font-weight: bold; color: #666; border-bottom: 1px solid #ddd; }
+    #announcement-text { flex: 1; padding: 15px; font-size: 18px; line-height: 1.6; color: #333; overflow-y: auto; white-space: pre-wrap; }
 
-    /* スキャン画面 */
-    #scan-view { display: none; flex-direction: column; height: 100%; width: 100%; position: absolute; top: 0; left: 0; background: #000; z-index: 100; }
+    /* スキャン画面 / 手入力画面 共通 */
+    .overlay-view { display: none; flex-direction: column; height: 100%; width: 100%; position: absolute; top: 0; left: 0; background: #000; z-index: 100; }
+    
+    /* スキャン専用 */
     #video-container { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; }
     #video { width: 100%; height: 100%; object-fit: cover; }
-    #btn-back { height: 80px; background: #666; border: none; color: white; font-size: 20px; font-weight: bold; }
+    
+    /* 手入力専用 */
+    #manual-view { background: #f0f2f5; justify-content: center; align-items: center; }
+    .manual-card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 80%; max-width: 300px; text-align: center; }
+    .manual-card h3 { margin-top: 0; color: #333; }
+    #input-id { width: 100%; font-size: 40px; text-align: center; padding: 10px; border: 2px solid #ddd; border-radius: 10px; margin: 20px 0; box-sizing: border-box; -webkit-appearance: none; }
+    .btn-ok { width: 100%; padding: 15px; font-size: 20px; font-weight: bold; color: white; background: #28a745; border: none; border-radius: 10px; cursor: pointer; }
+
+    .btn-cancel { height: 80px; background: #666; border: none; color: white; font-size: 20px; font-weight: bold; cursor: pointer; width: 100%; }
+    
     #overlay-msg { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: white; font-size: 18px; text-align: center; background: rgba(0,0,0,0.6); padding: 12px 24px; border-radius: 50px; width: 80%; pointer-events: none; }
 
     body.success-flash { background-color: var(--success-color) !important; }
@@ -47,7 +62,9 @@
 <body>
 
   <div class="app-container">
+    <!-- メイン画面 -->
     <div id="menu-view">
+      <div class="title-header"><h1>出退勤記録用スキャナー</h1></div>
       <div class="button-row">
         <button id="btn-in" class="btn-main" onclick="openScanner('出勤')">出勤<br><small>Clock In</small></button>
         <button id="btn-out" class="btn-main" onclick="openScanner('退勤')">退勤<br><small>Clock Out</small></button>
@@ -58,22 +75,35 @@
       </div>
     </div>
 
-    <div id="scan-view">
+    <!-- カメラ画面 -->
+    <div id="scan-view" class="overlay-view">
       <div id="video-container">
         <video id="video" playsinline></video>
         <div id="overlay-msg">QRコードをスキャン</div>
       </div>
-      <button id="btn-back" onclick="closeScanner()">キャンセル</button>
+      <button class="btn-cancel" onclick="closeScanner()">キャンセル</button>
+    </div>
+
+    <!-- 手入力画面 -->
+    <div id="manual-view" class="overlay-view">
+      <div class="manual-card">
+        <h3>IDを手入力</h3>
+        <input type="tel" id="input-id" maxlength="4" placeholder="0000" onkeyup="if(event.key==='Enter') submitManual()">
+        <button class="btn-ok" onclick="submitManual()">OK</button>
+      </div>
+      <div style="height: 40px;"></div>
+      <button class="btn-cancel" onclick="closeScanner()">キャンセル</button>
     </div>
   </div>
 
-  <audio id="sound-success" src="" preload="auto"></audio>
+  <audio id="sound-success" src="あなたの音声URL" preload="auto"></audio>
 
   <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyqk8zDqi17WXOfzz1XLbjRYerRfQyxlZcGnySkKRQm5shpKZRAjkWZ6ov4ft3w9Q8/exec";
     let currentMode = '', isProcessing = false, videoStream = null, scanTimer = null, wakeLock = null;
     const video = document.getElementById('video'), overlayMsg = document.getElementById('overlay-msg');
     const soundSuccess = document.getElementById('sound-success'), announceArea = document.getElementById('announcement-text');
+    const inputId = document.getElementById('input-id');
 
     async function loadAnnouncement() {
       try {
@@ -92,24 +122,42 @@
 
     async function openScanner(mode) {
       currentMode = mode; isProcessing = false;
-      overlayMsg.innerText = mode + "QRをスキャン中...";
       document.body.classList.remove('success-flash');
       unlockAudio(); requestWakeLock();
-      document.getElementById('menu-view').style.display = 'none';
-      document.getElementById('scan-view').style.display = 'flex';
-      scanTimer = setTimeout(() => { alert("30秒経過しました。"); closeScanner(); }, 30000);
+
       try {
+        // カメラ起動を試みる
         videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-        video.srcObject = videoStream; video.play(); requestAnimationFrame(tick);
-      } catch (err) { alert("カメラエラー"); closeScanner(); }
+        document.getElementById('menu-view').style.display = 'none';
+        document.getElementById('scan-view').style.display = 'flex';
+        overlayMsg.innerText = mode + "QRをスキャン中...";
+        video.srcObject = videoStream; 
+        video.play(); 
+        requestAnimationFrame(tick);
+        
+        // 30秒タイマー（カメラ時のみ）
+        scanTimer = setTimeout(() => { alert("タイムアウトしました。"); closeScanner(); }, 30000);
+
+      } catch (err) {
+        // カメラが使えない場合は手入力画面へ
+        console.warn("Camera failed, switching to manual input", err);
+        document.getElementById('menu-view').style.display = 'none';
+        document.getElementById('manual-view').style.display = 'flex';
+        inputId.value = "";
+        inputId.focus();
+      }
     }
 
     function closeScanner() {
       if (scanTimer) clearTimeout(scanTimer);
       if (wakeLock) wakeLock.release().then(() => wakeLock = null);
-      if (videoStream) videoStream.getTracks().forEach(track => track.stop());
+      if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
+      }
       document.getElementById('menu-view').style.display = 'flex';
       document.getElementById('scan-view').style.display = 'none';
+      document.getElementById('manual-view').style.display = 'none';
       document.body.classList.remove('success-flash');
       loadAnnouncement();
     }
@@ -131,18 +179,43 @@
       if (!isProcessing && document.getElementById('scan-view').style.display === 'flex') requestAnimationFrame(tick);
     }
 
+    // 手入力の確定処理
+    function submitManual() {
+      const val = inputId.value;
+      if (/^\d{4}$/.test(val)) {
+        isProcessing = true;
+        handleScan(val);
+      } else {
+        alert("4桁の数字を入力してください。");
+      }
+    }
+
     async function handleScan(staffId) {
-      overlayMsg.innerText = "送信中...";
+      // メッセージ表示場所を判定（カメラ中か手入力中か）
+      const isManual = document.getElementById('manual-view').style.display === 'flex';
+      if (!isManual) overlayMsg.innerText = "送信中...";
+
       try {
         const res = await fetch(GAS_URL, {
           method: "POST", mode: "cors", headers: { "Content-Type": "text/plain" },
           body: JSON.stringify({ staffId: staffId, type: currentMode })
         }).then(r => r.json());
+        
         if (res.success) {
           if (soundSuccess) soundSuccess.play().catch(() => {});
           document.body.classList.add('success-flash');
-          overlayMsg.innerHTML = `<span class="success-msg">${res.status}完了<br>ID:${res.staffId}</span>`;
-          setTimeout(closeScanner, 2000);
+          
+          if (!isManual) {
+            overlayMsg.innerHTML = `<span class="success-msg">${res.status}完了<br>ID:${res.staffId}</span>`;
+          } else {
+            // 手入力時はアラートではなく画面を緑にして少し待つ
+            document.querySelector('#manual-view .manual-card').innerHTML = `<div class="success-msg" style="color:#28a745">${res.status}完了<br>ID:${res.staffId}</div>`;
+          }
+          setTimeout(() => {
+            // 手入力時のカード内容を元に戻す準備
+            if (isManual) location.reload(); // 手入力時は状態リセットのためリロードが安全
+            else closeScanner();
+          }, 2000);
         }
       } catch (err) { alert("通信失敗"); isProcessing = false; }
     }
