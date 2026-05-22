@@ -4,7 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>出退勤スキャナー</title>
+  
   <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#4facfe">
+  
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').then((reg) => {
+          console.log('Service Worker registered.', reg);
+        });
+      });
+    }
+  </script>
+  
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
     :root {
@@ -13,40 +28,55 @@
       --success-color: #28a745;
       --error-color: #dc3545;
     }
-    body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; overflow: hidden; background: #f0f2f5; }
-    .app-container { width: 100%; height: 100%; display: flex; flex-direction: column; }
+    body, html { margin: 0; padding: 0; height: 100%; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden; background: #333; /* 背景を暗くしてPCで見やすく */ display: flex; align-items: center; justify-content: center; }
+    
+    /* PC表示最適化：画面の高さに合わせて幅を制限（スマホのような見た目に固定） */
+    .app-container { 
+      width: 100%; 
+      max-width: 500px; 
+      height: 100%; 
+      background: #f0f2f5; 
+      display: flex; 
+      flex-direction: column; 
+      position: relative; 
+      box-shadow: 0 0 50px rgba(0,0,0,0.5);
+    }
+    @media (min-aspect-ratio: 1/1) {
+      .app-container {
+        height: 96vh;
+        width: calc(96vh * 0.6); /* 高さに合わせて幅を調整 */
+        border-radius: 20px;
+        overflow: hidden;
+      }
+    }
 
-    /* メニュー */
     #menu-view { flex: 1; display: flex; flex-direction: column; background: #f0f2f5; }
     .title-header { text-align: center; padding: 15px 0 5px; }
-    .title-header h1 { margin: 0; font-size: 16px; color: #666; font-weight: bold; }
+    .title-header h1 { margin: 0; font-size: 16px; color: #666; font-weight: bold; letter-spacing: 1px; }
+
     .button-container { display: flex; padding: 10px; gap: 12px; box-sizing: border-box; }
     .btn-main { flex: 1; aspect-ratio: 1 / 1; border: none; border-radius: 24px; font-size: 32px; font-weight: bold; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 8px 15px rgba(0,0,0,0.15); transition: transform 0.1s; }
     #btn-in { background: var(--in-gradient); }
     #btn-out { background: var(--out-gradient); }
     .btn-main:active { transform: scale(0.95); }
-    .btn-main small { font-size: 14px; margin-top: 8px; opacity: 0.9; }
+    .btn-main small { font-size: 14px; margin-top: 8px; opacity: 0.9; font-weight: normal; }
 
-    /* お知らせ */
     .announcement-container { flex: 1; display: flex; flex-direction: column; margin: 10px; background: white; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); overflow: hidden; }
     .header-label { padding: 12px 16px; background: #f8f9fa; font-size: 12px; font-weight: bold; color: #999; border-bottom: 1px solid #eee; }
     #announcement-text { flex: 1; padding: 20px; font-size: 18px; line-height: 1.6; color: #333; overflow-y: auto; white-space: pre-wrap; }
 
-    /* 各種画面 */
     .overlay-view { display: none; flex-direction: column; height: 100%; width: 100%; position: absolute; top: 0; left: 0; background: #000; z-index: 100; }
     #video-container { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; }
     #video { width: 100%; height: 100%; object-fit: cover; }
+    
     #manual-view { background: #f0f2f5; justify-content: center; align-items: center; }
-    .manual-card { background: white; padding: 30px; border-radius: 24px; width: 85%; max-width: 320px; text-align: center; }
-    #input-id { width: 100%; font-size: 44px; text-align: center; padding: 12px; border: 2px solid #eee; border-radius: 16px; margin: 20px 0; }
-    .btn-ok { width: 100%; padding: 16px; font-size: 22px; font-weight: bold; color: white; background: #28a745; border: none; border-radius: 16px; }
-    .btn-cancel { height: 85px; background: #444; border: none; color: white; font-size: 20px; font-weight: bold; }
+    .manual-card { background: white; padding: 30px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); width: 85%; max-width: 320px; text-align: center; }
+    #input-id { width: 100%; font-size: 44px; text-align: center; padding: 12px; border: 2px solid #eee; border-radius: 16px; margin: 20px 0; background: #f9f9f9; }
+    .btn-ok { width: 100%; padding: 16px; font-size: 22px; font-weight: bold; color: white; background: #28a745; border: none; border-radius: 16px; cursor: pointer; }
+    .btn-cancel { height: 85px; background: #444; border: none; color: white; font-size: 20px; font-weight: bold; cursor: pointer; }
     #overlay-msg { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); color: white; font-size: 18px; text-align: center; background: rgba(0,0,0,0.75); padding: 12px 30px; border-radius: 50px; width: 80%; pointer-events: none; }
 
-    /* 通信エラーバッジ */
-    #error-log { display: none; position: fixed; top: 10px; right: 10px; background: var(--error-color); color: white; padding: 10px 15px; border-radius: 10px; font-size: 12px; font-weight: bold; z-index: 10001; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-    
-    /* 擬似省電力 */
+    #error-log { display: none; position: fixed; top: 10px; right: 10px; background: var(--error-color); color: white; padding: 10px 15px; border-radius: 10px; font-size: 12px; font-weight: bold; z-index: 10001; }
     #blackout-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: black; z-index: 9999; }
 
     body.success-flash { background-color: var(--success-color) !important; }
@@ -55,7 +85,7 @@
 </head>
 <body onmousedown="resetIdleTimer()" ontouchstart="resetIdleTimer()">
 
-  <div id="error-log">⚠️ 送信エラーが発生しました！<br>管理者へ報告してください。</div>
+  <div id="error-log">⚠️ 送信エラーが発生しました！</div>
   <div id="blackout-overlay" onclick="resetIdleTimer()"></div>
 
   <div class="app-container">
@@ -77,7 +107,7 @@
         <video id="video" playsinline></video>
         <div id="overlay-msg">QRコードをスキャン</div>
       </div>
-      <button class="btn-cancel" onclick="closeScanner()">キャンセル</button>
+      <button class="btn-cancel" onclick="closeScanner('cancel')">キャンセル</button>
     </div>
 
     <!-- 手入力画面 -->
@@ -88,54 +118,89 @@
         <button class="btn-ok" onclick="submitManual()">打刻する</button>
       </div>
       <div style="height: 30px;"></div>
-      <button class="btn-cancel" onclick="closeScanner()">キャンセルして戻る</button>
+      <button class="btn-cancel" onclick="closeScanner('cancel')">キャンセルして戻る</button>
     </div>
   </div>
 
-  <audio id="sound-success" src="あなたの音声URL" preload="auto"></audio>
+  <!-- 音声設定 -->
+  <audio id="sound-success" src="SUCCESS_URL" preload="auto"></audio>
+  <audio id="sound-in" src="IN_URL" preload="auto"></audio>
+  <audio id="sound-out" src="OUT_URL" preload="auto"></audio>
+  <audio id="sound-cancel" src="CANCEL_URL" preload="auto"></audio>
+  <audio id="sound-timeout" src="TIMEOUT_URL" preload="auto"></audio>
 
   <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyWoso71ZHcKObFAnFxslYpXQhoPdiol_klVbrkRGaq5fTj6QQPMJyEB7SxULv2IGMq/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxwsUCs7j2M5kRTlnB3qV-3gZGWIxXt5JiTmIWYPf0IOWF4bEq9t3VzX-FvQCXVUdep/exec";
     const IDLE_TIME = 180000;
     let currentMode = '', isProcessing = false, videoStream = null, scanTimer = null, wakeLock = null, idleTimer = null;
-    const video = document.getElementById('video'), overlayMsg = document.getElementById('overlay-msg'), announceArea = document.getElementById('announcement-text'), inputId = document.getElementById('input-id'), soundSuccess = document.getElementById('sound-success'), blackout = document.getElementById('blackout-overlay'), errorLog = document.getElementById('error-log');
+    
+    const elements = {
+      video: document.getElementById('video'),
+      overlayMsg: document.getElementById('overlay-msg'),
+      announceArea: document.getElementById('announcement-text'),
+      inputId: document.getElementById('input-id'),
+      blackout: document.getElementById('blackout-overlay'),
+      errorLog: document.getElementById('error-log')
+    };
+
+    const sounds = {
+      success: document.getElementById('sound-success'),
+      in: document.getElementById('sound-in'),
+      out: document.getElementById('sound-out'),
+      cancel: document.getElementById('sound-cancel'),
+      timeout: document.getElementById('sound-timeout')
+    };
 
     async function loadAnnouncement() {
       try {
         const response = await fetch(GAS_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ action: "getAnnouncement" }) });
         const res = await response.json();
-        if (res.success) announceArea.innerText = res.message;
+        if (res.success) elements.announceArea.innerText = res.message;
       } catch (err) {}
     }
 
     async function requestWakeLock() { if ('wakeLock' in navigator) { try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {} } }
-    function resetIdleTimer() { blackout.style.display = 'none'; clearTimeout(idleTimer); if (document.getElementById('menu-view').style.display !== 'none') { idleTimer = setTimeout(() => { blackout.style.display = 'block'; }, IDLE_TIME); } }
+    function resetIdleTimer() { elements.blackout.style.display = 'none'; clearTimeout(idleTimer); if (document.getElementById('menu-view').style.display !== 'none') { idleTimer = setTimeout(() => { elements.blackout.style.display = 'block'; }, IDLE_TIME); } }
     window.onload = () => { loadAnnouncement(); resetIdleTimer(); requestWakeLock(); };
-    function unlockAudio() { if (soundSuccess) { soundSuccess.play().then(() => { soundSuccess.pause(); soundSuccess.currentTime = 0; }).catch(() => {}); } }
+
+    // すべての音源をアンロック
+    function unlockAudio() {
+      Object.values(sounds).forEach(s => {
+        if (s) { s.play().then(() => { s.pause(); s.currentTime = 0; }).catch(() => {}); }
+      });
+    }
 
     async function openScanner(mode) {
       currentMode = mode; isProcessing = false;
       document.body.classList.remove('success-flash');
-      unlockAudio(); requestWakeLock();
+      unlockAudio();
+      
+      // 出勤/退勤の音を鳴らす
+      if (mode === '出勤' && sounds.in) sounds.in.play().catch(() => {});
+      if (mode === '退勤' && sounds.out) sounds.out.play().catch(() => {});
+
+      requestWakeLock();
       try {
         videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
         document.getElementById('menu-view').style.display = 'none';
         document.getElementById('scan-view').style.display = 'flex';
-        overlayMsg.innerText = mode + "QRをスキャン中...";
-        video.srcObject = videoStream; video.play(); requestAnimationFrame(tick);
-        // アラートなしタイムアウト
+        elements.overlayMsg.innerText = mode + "QRをスキャン中...";
+        elements.video.srcObject = videoStream; elements.video.play(); requestAnimationFrame(tick);
+        
         scanTimer = setTimeout(() => {
-          overlayMsg.innerHTML = `<span style="color:#ffc107">タイムアウトしました。<br>メニュー画面に戻ります。</span>`;
+          if (sounds.timeout) sounds.timeout.play().catch(() => {});
+          elements.overlayMsg.innerHTML = `<span style="color:#ffc107">タイムアウトしました。</span>`;
           setTimeout(closeScanner, 2000);
         }, 30000);
       } catch (err) {
         document.getElementById('menu-view').style.display = 'none';
         document.getElementById('manual-view').style.display = 'flex';
-        inputId.value = ""; inputId.focus();
+        elements.inputId.value = ""; elements.inputId.focus();
       }
     }
 
-    function closeScanner() {
+    function closeScanner(reason) {
+      if (reason === 'cancel' && sounds.cancel) sounds.cancel.play().catch(() => {});
       if (scanTimer) clearTimeout(scanTimer);
       if (wakeLock) wakeLock.release().then(() => wakeLock = null);
       if (videoStream) { videoStream.getTracks().forEach(track => track.stop()); videoStream = null; }
@@ -147,10 +212,10 @@
     }
 
     function tick() {
-      if (video.readyState === video.HAVE_ENOUGH_DATA && !isProcessing && document.getElementById('scan-view').style.display === 'flex') {
+      if (elements.video.readyState === elements.video.HAVE_ENOUGH_DATA && !isProcessing && document.getElementById('scan-view').style.display === 'flex') {
         const canvas = document.createElement('canvas');
-        canvas.height = video.videoHeight; canvas.width = video.videoWidth;
-        const ctx = canvas.getContext('2d'); ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.height = elements.video.videoHeight; canvas.width = elements.video.videoWidth;
+        const ctx = canvas.getContext('2d'); ctx.drawImage(elements.video, 0, 0, canvas.width, canvas.height);
         const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
         if (code && /^\d{4}$/.test(code.data)) { isProcessing = true; if (scanTimer) clearTimeout(scanTimer); handleScan(code.data); return; }
       }
@@ -158,16 +223,15 @@
     }
 
     function submitManual() {
-      const val = inputId.value;
+      const val = elements.inputId.value;
       if (/^\d{4}$/.test(val)) { isProcessing = true; handleScan(val, true); } else { alert("4桁の数字を入力してください。"); }
     }
 
     async function handleScan(staffId, isManual = false) {
-      if (soundSuccess) soundSuccess.play().catch(() => {});
+      if (sounds.success) sounds.success.play().catch(() => {});
       document.body.classList.add('success-flash');
 
       if (isManual) {
-        // 手入力（PC等）：同期送信（完了を待つ）
         document.getElementById('manual-card-inner').innerHTML = `<div class="success-msg" style="color:#28a745">ID:${staffId}<br>記録中...</div>`;
         try {
           const res = await fetch(GAS_URL, { method: "POST", mode: "cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ staffId: staffId, type: currentMode }) }).then(r => r.json());
@@ -175,23 +239,13 @@
             document.getElementById('manual-card-inner').innerHTML = `<div class="success-msg" style="color:#28a745">ID:${staffId}<br>${res.status}完了！</div>`;
             setTimeout(() => { location.reload(); }, 2000);
           } else { throw new Error(res.message); }
-        } catch (err) {
-          alert("送信失敗: " + err.message);
-          location.reload();
-        }
+        } catch (err) { alert("送信失敗: " + err.message); location.reload(); }
       } else {
-        // カメラ：非同期送信（すぐに次へ）
-        overlayMsg.innerHTML = `<span class="success-msg">ID:${staffId}<br>受付完了！</span>`;
-        
+        elements.overlayMsg.innerHTML = `<span class="success-msg">ID:${staffId}<br>受付完了！</span>`;
         fetch(GAS_URL, { method: "POST", mode: "cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ staffId: staffId, type: currentMode }) })
         .then(r => r.json())
         .then(res => { if (!res.success) throw new Error(); })
-        .catch(err => {
-          // 非同期エラー検知：画面端に警告を出す
-          errorLog.style.display = 'block';
-          console.error("Async upload failed:", staffId);
-        });
-
+        .catch(err => { elements.errorLog.style.display = 'block'; });
         setTimeout(() => { closeScanner(); isProcessing = false; }, 1200);
       }
     }
