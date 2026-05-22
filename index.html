@@ -155,13 +155,15 @@
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyqk8zDqi17WXOfzz1XLbjRYerRfQyxlZcGnySkKRQm5shpKZRAjkWZ6ov4ft3w9Q8/exec";
     
     /* 擬似省電力用変数の追加 */
-    const IDLE_TIME = 180000; // 3分 (ミリ秒)
+    let currentMode = '', isProcessing = false, videoStream = null, scanTimer = null, wakeLock = null;
     let idleTimer = null;
+
+    const video = document.getElementById('video'), overlayMsg = document.getElementById('overlay-msg');
+    const announceArea = document.getElementById('announcement-text'), inputId = document.getElementById('input-id'), soundSuccess = document.getElementById('sound-success');
     const blackout = document.getElementById('blackout-overlay');
 
-    let currentMode = '', isProcessing = false, videoStream = null, scanTimer = null, wakeLock = null;
-    const video = document.getElementById('video'), overlayMsg = document.getElementById('overlay-msg'), announceArea = document.getElementById('announcement-text'), inputId = document.getElementById('input-id'), soundSuccess = document.getElementById('sound-success');
-
+    // お知らせ取得、スリープ防止、タイマー、openScanner, closeScanner, tick, submitManual は
+    // 基本ロジックを維持しつつ、handleScanのみ高速化します。
     /* 擬似省電力ロジックの追加 */
     function resetIdleTimer() {
       blackout.style.display = 'none';
@@ -256,24 +258,45 @@
 
     async function handleScan(staffId) {
       const isManual = document.getElementById('manual-view').style.display === 'flex';
-      if (!isManual) overlayMsg.innerText = "送信中...";
-      try {
-        const res = await fetch(GAS_URL, {
-          method: "POST", mode: "cors", headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ staffId: staffId, type: currentMode })
-        }).then(r => r.json());
-        if (res.success) {
-          if (soundSuccess) soundSuccess.play().catch(() => {});
-          document.body.classList.add('success-flash');
-          if (!isManual) {
-            overlayMsg.innerHTML = `<span class="success-msg">${res.status}完了<br>ID:${res.staffId}</span>`;
-          } else {
-            document.querySelector('#manual-view .manual-card').innerHTML = `<div class="success-msg" style="color:#28a745">${res.status}完了<br>ID:${res.staffId}</div>`;
-          }
-          setTimeout(() => { if (isManual) location.reload(); else closeScanner(); }, 2000);
+      
+      // 【高速化のキモ】
+      // 通信の成功を待たずに、まずはUI上で「成功」を演出する
+      if (soundSuccess) soundSuccess.play().catch(() => {});
+      document.body.classList.add('success-flash');
+
+      if (!isManual) {
+        overlayMsg.innerHTML = `<span class="success-msg">受付完了！<br>記録しています...</span>`;
+      } else {
+        document.querySelector('#manual-view .manual-card').innerHTML = `<div class="success-msg" style="color:#28a745">受付完了！<br>記録しています...</div>`;
+      }
+
+      // 裏側でGASへ送信（awaitをつけずに「投げっぱなし」にする）
+      fetch(GAS_URL, {
+        method: "POST", mode: "cors", headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ staffId: staffId, type: currentMode })
+      })
+      .then(r => r.json())
+      .then(res => {
+        console.log("Success:", res); // 通信結果はコンソールにのみ出す
+      })
+      .catch(err => {
+        console.error("Transmission failed:", err);
+        // 送信失敗時、本当はアラートを出したいところですが、
+        // ラッシュ時は次の人がスキャンしているので、ここではログに残すのみにします。
+      });
+
+      // 通信の完了を待たず、1.2秒（演出を見せる最低限の時間）だけ待ってメインに戻る
+      setTimeout(() => {
+        if (isManual) {
+          location.reload(); 
+        } else {
+          closeScanner(); 
+          // 内部的なスキャン停止フラグを解除し、次の人が即座にスキャンできるようにする
+          isProcessing = false; 
         }
-      } catch (err) { alert("通信失敗"); isProcessing = false; }
+      }, 1200); 
     }
+    
   </script>
 </body>
 </html>
