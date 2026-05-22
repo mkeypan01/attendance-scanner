@@ -28,43 +28,67 @@
       --success-color: #28a745;
       --error-color: #dc3545;
     }
-    body, html { margin: 0; padding: 0; height: 100%; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden; background: #333; /* 背景を暗くしてPCで見やすく */ display: flex; align-items: center; justify-content: center; }
+    /* 全体の背景：PCでは暗く、スマホでは白っぽく */
+    body, html { margin: 0; padding: 0; height: 100%; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden; background: #333; display: flex; align-items: center; justify-content: center; }
     
-    /* PC表示最適化：画面の高さに合わせて幅を制限（スマホのような見た目に固定） */
+    /* コンテナ：基本はスマホ全画面。PC（横長）では中央に500px幅で表示 */
     .app-container { 
       width: 100%; 
-      max-width: 500px; 
       height: 100%; 
+      max-width: 500px; 
       background: #f0f2f5; 
       display: flex; 
       flex-direction: column; 
       position: relative; 
-      box-shadow: 0 0 50px rgba(0,0,0,0.5);
-    }
-    @media (min-aspect-ratio: 1/1) {
-      .app-container {
-        height: 96vh;
-        width: calc(96vh * 0.6); /* 高さに合わせて幅を調整 */
-        border-radius: 20px;
-        overflow: hidden;
-      }
+      margin: 0 auto;
     }
 
+    /* メニュービュー */
     #menu-view { flex: 1; display: flex; flex-direction: column; background: #f0f2f5; }
-    .title-header { text-align: center; padding: 15px 0 5px; }
-    .title-header h1 { margin: 0; font-size: 16px; color: #666; font-weight: bold; letter-spacing: 1px; }
+    
+    /* タイトル */
+    .title-header { text-align: center; padding: 10px 0; }
+    .title-header h1 { margin: 0; font-size: 18px; color: #666; font-weight: bold; white-space: nowrap; }
 
+    /* ボタンエリア */
     .button-container { display: flex; padding: 10px; gap: 12px; box-sizing: border-box; }
-    .btn-main { flex: 1; aspect-ratio: 1 / 1; border: none; border-radius: 24px; font-size: 32px; font-weight: bold; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 8px 15px rgba(0,0,0,0.15); transition: transform 0.1s; }
+    .btn-main { 
+      flex: 1; 
+      aspect-ratio: 1 / 1; 
+      border: none; 
+      border-radius: 24px; 
+      font-size: 32px; 
+      font-weight: bold; 
+      color: white; 
+      cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      box-shadow: 0 8px 15px rgba(0,0,0,0.15); transition: transform 0.1s;
+    }
     #btn-in { background: var(--in-gradient); }
     #btn-out { background: var(--out-gradient); }
     .btn-main:active { transform: scale(0.95); }
     .btn-main small { font-size: 14px; margin-top: 8px; opacity: 0.9; font-weight: normal; }
 
+    /* お知らせエリア */
     .announcement-container { flex: 1; display: flex; flex-direction: column; margin: 10px; background: white; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); overflow: hidden; }
     .header-label { padding: 12px 16px; background: #f8f9fa; font-size: 12px; font-weight: bold; color: #999; border-bottom: 1px solid #eee; }
     #announcement-text { flex: 1; padding: 20px; font-size: 18px; line-height: 1.6; color: #333; overflow-y: auto; white-space: pre-wrap; }
 
+    /* ----------------------------------------------------
+       PC（横長画面）向けのレスポンシブ調整 
+       画面が低いときでも見切れないように高さを基準に縮小する
+    ------------------------------------------------------- */
+    @media screen and (min-aspect-ratio: 1/1) {
+      .app-container { height: 98vh; border-radius: 20px; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
+      .title-header h1 { font-size: 3vh; }
+      .button-container { height: 35vh; }
+      .btn-main { aspect-ratio: auto; font-size: 5vh; border-radius: 3vh; }
+      .btn-main small { font-size: 2vh; }
+      #announcement-text { font-size: 2.5vh; }
+      .header-label { font-size: 2vh; padding: 1vh 2vh; }
+    }
+
+    /* 各種画面 */
     .overlay-view { display: none; flex-direction: column; height: 100%; width: 100%; position: absolute; top: 0; left: 0; background: #000; z-index: 100; }
     #video-container { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; }
     #video { width: 100%; height: 100%; object-fit: cover; }
@@ -160,10 +184,25 @@
     }
 
     async function requestWakeLock() { if ('wakeLock' in navigator) { try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {} } }
-    function resetIdleTimer() { elements.blackout.style.display = 'none'; clearTimeout(idleTimer); if (document.getElementById('menu-view').style.display !== 'none') { idleTimer = setTimeout(() => { elements.blackout.style.display = 'block'; }, IDLE_TIME); } }
+    
+    function resetIdleTimer() { 
+      elements.blackout.style.display = 'none'; 
+      clearTimeout(idleTimer); 
+      if (document.getElementById('menu-view').style.display !== 'none') { 
+        idleTimer = setTimeout(() => { elements.blackout.style.display = 'block'; }, IDLE_TIME); 
+      } 
+    }
+    
+    // 傾き検知
+    window.addEventListener('devicemotion', (event) => {
+      const acc = event.accelerationIncludingGravity;
+      if (!acc) return;
+      const totalAcc = Math.abs(acc.x) + Math.abs(acc.y) + Math.abs(acc.z);
+      if (totalAcc > 15) { resetIdleTimer(); }
+    });
+
     window.onload = () => { loadAnnouncement(); resetIdleTimer(); requestWakeLock(); };
 
-    // すべての音源をアンロック
     function unlockAudio() {
       Object.values(sounds).forEach(s => {
         if (s) { s.play().then(() => { s.pause(); s.currentTime = 0; }).catch(() => {}); }
@@ -174,11 +213,8 @@
       currentMode = mode; isProcessing = false;
       document.body.classList.remove('success-flash');
       unlockAudio();
-      
-      // 出勤/退勤の音を鳴らす
       if (mode === '出勤' && sounds.in) sounds.in.play().catch(() => {});
       if (mode === '退勤' && sounds.out) sounds.out.play().catch(() => {});
-
       requestWakeLock();
       try {
         videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
