@@ -38,7 +38,7 @@
       gap: 12px; 
     }
 
-    /* 1. 時計エリア（特大フォント・余白最小限） */
+    /* 1. 時計エリア */
     .clock-container {
       display: flex;
       flex-direction: column;
@@ -75,19 +75,25 @@
       line-height: 1;
     }
 
-    /* 2. ボタンエリア */
+    /* 2. ボタンエリア（正方形サイズ） */
     .button-container { 
       display: flex; 
       gap: 12px; 
-      height: 26%;
-      min-height: 130px;
-      max-height: 175px;
       flex-shrink: 0;
     }
     .btn-main { 
-      flex: 1; height: 100%; border: none; border-radius: 24px; 
-      font-size: 34px; font-weight: bold; color: white; cursor: pointer; 
-      display: flex; flex-direction: column; align-items: center; justify-content: center; 
+      flex: 1; 
+      aspect-ratio: 1 / 1; 
+      border: none; 
+      border-radius: 24px; 
+      font-size: 34px; 
+      font-weight: bold; 
+      color: white; 
+      cursor: pointer; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: center; 
       box-shadow: 0 8px 15px rgba(0,0,0,0.15); 
       transition: transform 0.1s; 
     }
@@ -96,7 +102,7 @@
     .btn-main:active { transform: scale(0.95); }
     .btn-main small { font-size: 15px; font-weight: bold; margin-top: 4px; opacity: 0.9; }
 
-    /* 3. 連絡事項エリア（元のサイズに復元） */
+    /* 3. 連絡事項エリア */
     .bottom-section { 
       flex: 1; 
       display: flex; 
@@ -163,7 +169,7 @@
         </div>
       </div>
 
-      <!-- 2. ボタンエリア -->
+      <!-- 2. ボタンエリア（正方形） -->
       <div class="button-container">
         <button id="btn-in" class="btn-main" onclick="openScanner('出勤')">出勤<br><small>Clock In</small></button>
         <button id="btn-out" class="btn-main" onclick="openScanner('退勤')">退勤<br><small>Clock Out</small></button>
@@ -212,7 +218,7 @@
     let currentMode = '', isProcessing = false, videoStream = null, scanTimer = null, wakeLock = null, idleTimer = null;
     let isMotionSensorInitialized = false;
     let lastAcc = null;
-    const MOTION_THRESHOLD = 3.2; // 持ち上げ・揺れを判定する感度
+    const MOTION_THRESHOLD = 3.2;
     
     const video = document.getElementById('video'), overlayMsg = document.getElementById('overlay-msg'), announceArea = document.getElementById('announcement-text'), inputId = document.getElementById('input-id'), blackout = document.getElementById('blackout-overlay'), errorLog = document.getElementById('error-log');
     const clockDate = document.getElementById('clock-date'), clockTime = document.getElementById('clock-time'), clockSec = document.getElementById('clock-sec');
