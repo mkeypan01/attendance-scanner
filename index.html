@@ -26,7 +26,7 @@
     .app-container { 
       width: 100%; height: 100%; 
       display: flex; flex-direction: column; 
-      padding: env(safe-area-inset-top, 8px) 16px env(safe-area-inset-bottom, 12px);
+      padding: env(safe-area-inset-top, 10px) 10px env(safe-area-inset-bottom, 10px);
       box-sizing: border-box;
     }
 
@@ -35,25 +35,24 @@
       display: flex; 
       flex-direction: column; 
       height: 100%; 
-      justify-content: space-between;
-      gap: 10px; 
+      gap: 12px; 
     }
 
-    /* 1. 時計エリア（特大表示） */
+    /* 1. 時計エリア（特大フォント・余白最小限） */
     .clock-container {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 15px 0 5px;
+      padding: 5px 0 0;
       flex-shrink: 0;
     }
     .clock-date {
-      font-size: 21px;
+      font-size: 24px;
       font-weight: 600;
       color: var(--text-sub);
       letter-spacing: 0.5px;
-      margin-bottom: 2px;
+      margin-bottom: -2px;
     }
     .clock-time-wrap {
       display: flex;
@@ -62,74 +61,68 @@
       font-variant-numeric: tabular-nums;
     }
     .clock-time {
-      font-size: clamp(74px, 20vw, 94px);
+      font-size: clamp(84px, 24vw, 112px);
       font-weight: 300;
       color: var(--text-main);
       line-height: 1;
       letter-spacing: -2px;
     }
     .clock-sec {
-      font-size: clamp(30px, 8vw, 38px);
+      font-size: clamp(34px, 9vw, 44px);
       font-weight: 400;
       color: var(--text-sub);
       margin-left: 6px;
       line-height: 1;
     }
 
-    /* 2. ボタンエリア（画面中央配置） */
+    /* 2. ボタンエリア */
     .button-container { 
       display: flex; 
-      gap: 14px; 
-      height: 26%;
-      min-height: 130px;
-      max-height: 175px;
+      gap: 12px; 
+      height: 130px;
       flex-shrink: 0;
     }
     .btn-main { 
-      flex: 1; height: 100%; border: none; border-radius: 22px; 
+      flex: 1; height: 100%; border: none; border-radius: 24px; 
       font-size: 34px; font-weight: bold; color: white; cursor: pointer; 
       display: flex; flex-direction: column; align-items: center; justify-content: center; 
-      box-shadow: 0 8px 18px rgba(0,0,0,0.12); 
-      transition: transform 0.1s, box-shadow 0.1s; 
+      box-shadow: 0 8px 15px rgba(0,0,0,0.15); 
+      transition: transform 0.1s; 
     }
     #btn-in { background: var(--in-gradient); }
     #btn-out { background: var(--out-gradient); }
-    .btn-main:active { transform: scale(0.96); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-    .btn-main small { font-size: 15px; font-weight: 600; margin-top: 4px; opacity: 0.9; letter-spacing: 0.5px; }
+    .btn-main:active { transform: scale(0.95); }
+    .btn-main small { font-size: 15px; font-weight: bold; margin-top: 4px; opacity: 0.9; }
 
-    /* 3. 連絡事項エリア（コンパクト・スクロール可） */
+    /* 3. 連絡事項エリア（元のサイズに復元） */
     .bottom-section { 
       flex: 1; 
       display: flex; 
       flex-direction: column; 
-      min-height: 90px;
-      max-height: 35%;
+      min-height: 0;
     }
     .announcement-container { 
       flex: 1; 
       display: flex; 
       flex-direction: column; 
       background: white; 
-      border-radius: 18px; 
-      box-shadow: 0 4px 12px rgba(0,0,0,0.05); 
+      border-radius: 20px; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
       overflow: hidden; 
     }
     .header-label { 
-      padding: 8px 14px; 
+      padding: 12px 16px; 
       background: #f8f9fa; 
       font-size: 12px; 
       font-weight: bold; 
-      color: #888; 
+      color: #999; 
       border-bottom: 1px solid #eee; 
-      display: flex;
-      align-items: center;
-      gap: 6px;
     }
     #announcement-text { 
       flex: 1; 
-      padding: 12px 14px; 
-      font-size: 14px; 
-      line-height: 1.5; 
+      padding: 20px; 
+      font-size: 18px; 
+      line-height: 1.6; 
       color: #333; 
       overflow-y: auto; 
       white-space: pre-wrap; 
@@ -141,15 +134,15 @@
     #video-container { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; }
     #video { width: 100%; height: 100%; object-fit: cover; }
     #manual-view { background: #f0f2f5; justify-content: center; align-items: center; padding: 20px; }
-    .manual-card { background: white; padding: 28px 20px; border-radius: 24px; width: 100%; max-width: 320px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
-    #input-id { width: 100%; font-size: 38px; text-align: center; padding: 10px; border: 2px solid #ddd; border-radius: 14px; margin: 16px 0; letter-spacing: 4px; }
-    .btn-ok { width: 100%; padding: 15px; font-size: 20px; font-weight: bold; color: white; background: #28a745; border: none; border-radius: 14px; cursor: pointer; }
-    .btn-cancel { height: 75px; background: #333; border: none; color: white; font-size: 18px; font-weight: bold; flex-shrink: 0; }
-    #overlay-msg { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: white; font-size: 17px; text-align: center; background: rgba(0,0,0,0.8); padding: 12px 24px; border-radius: 50px; width: 85%; pointer-events: none; }
-    #error-log { display: none; position: fixed; top: 12px; right: 12px; left: 12px; background: var(--error-color); color: white; padding: 12px; border-radius: 12px; font-size: 13px; font-weight: bold; z-index: 10001; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.25); }
+    .manual-card { background: white; padding: 30px; border-radius: 24px; width: 85%; max-width: 320px; text-align: center; }
+    #input-id { width: 100%; font-size: 44px; text-align: center; padding: 12px; border: 2px solid #eee; border-radius: 16px; margin: 20px 0; }
+    .btn-ok { width: 100%; padding: 16px; font-size: 22px; font-weight: bold; color: white; background: #28a745; border: none; border-radius: 16px; cursor: pointer; }
+    .btn-cancel { height: 85px; background: #444; border: none; color: white; font-size: 20px; font-weight: bold; flex-shrink: 0; }
+    #overlay-msg { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); color: white; font-size: 18px; text-align: center; background: rgba(0,0,0,0.75); padding: 12px 30px; border-radius: 50px; width: 80%; pointer-events: none; }
+    #error-log { display: none; position: fixed; top: 10px; right: 10px; background: var(--error-color); color: white; padding: 10px 15px; border-radius: 10px; font-size: 12px; font-weight: bold; z-index: 10001; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
     #blackout-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: black; z-index: 9999; }
     body.success-flash { background-color: var(--success-color) !important; }
-    .success-msg { color: #fff; font-size: 26px; font-weight: bold; }
+    .success-msg { color: #fff; font-size: 28px; font-weight: bold; }
   </style>
 </head>
 <body onmousedown="handleUserInteraction()" ontouchstart="handleUserInteraction()">
@@ -159,7 +152,7 @@
 
   <div class="app-container">
     <div id="menu-view">
-      <!-- 1. 時計表示エリア（大サイズ） -->
+      <!-- 1. 時計表示エリア -->
       <div class="clock-container">
         <div id="clock-date" class="clock-date">----年--月--日 (--)</div>
         <div class="clock-time-wrap">
@@ -168,7 +161,7 @@
         </div>
       </div>
 
-      <!-- 2. ボタンエリア（画面中央） -->
+      <!-- 2. ボタンエリア -->
       <div class="button-container">
         <button id="btn-in" class="btn-main" onclick="openScanner('出勤')">出勤<br><small>Clock In</small></button>
         <button id="btn-out" class="btn-main" onclick="openScanner('退勤')">退勤<br><small>Clock Out</small></button>
@@ -195,12 +188,12 @@
     <!-- 手入力画面 -->
     <div id="manual-view" class="overlay-view">
       <div class="manual-card" id="manual-card-inner">
-        <h3 style="margin:0; color:#555; font-size: 18px;">IDを手入力</h3>
+        <h3 style="margin:0; color:#666;">IDを手入力</h3>
         <input type="tel" id="input-id" maxlength="4" placeholder="0000" onkeyup="if(event.key==='Enter') submitManual()">
         <button class="btn-ok" onclick="submitManual()">打刻する</button>
       </div>
-      <div style="height: 20px;"></div>
-      <button class="btn-cancel" style="width: 100%; border-radius: 14px;" onclick="closeScanner(true)">キャンセルして戻る</button>
+      <div style="height: 30px;"></div>
+      <button class="btn-cancel" onclick="closeScanner(true)">キャンセルして戻る</button>
     </div>
   </div>
 
@@ -256,13 +249,13 @@
       if (lastAcc) {
         const delta = Math.abs(acc.x - lastAcc.x) + Math.abs(acc.y - lastAcc.y) + Math.abs(acc.z - lastAcc.z);
         if (delta > MOTION_THRESHOLD) {
-          resetIdleTimer(); // 動かしたら画面点灯・タイマーリセット
+          resetIdleTimer();
         }
       }
       lastAcc = { x: acc.x, y: acc.y, z: acc.z };
     }
 
-    // 初回操作時にセンサー待受を開始（iOSのパーミッションにも対応）
+    // 初回操作時にセンサー待受を開始
     function initMotionSensor() {
       if (isMotionSensorInitialized) return;
       isMotionSensorInitialized = true;
