@@ -12,7 +12,7 @@
       --out-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
       --success-color: #28a745;
       --error-color: #dc3545;
-      --text-main: #333333;
+      --text-main: #222222;
       --text-sub: #666666;
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -26,27 +26,34 @@
     .app-container { 
       width: 100%; height: 100%; 
       display: flex; flex-direction: column; 
-      padding: env(safe-area-inset-top, 10px) 16px env(safe-area-inset-bottom, 12px);
+      padding: env(safe-area-inset-top, 8px) 16px env(safe-area-inset-bottom, 12px);
       box-sizing: border-box;
     }
 
-    #menu-view { flex: 1; display: flex; flex-direction: column; height: 100%; gap: 12px; }
+    #menu-view { 
+      flex: 1; 
+      display: flex; 
+      flex-direction: column; 
+      height: 100%; 
+      justify-content: space-between;
+      gap: 10px; 
+    }
 
-    /* 1. 時計エリア */
+    /* 1. 時計エリア（特大表示） */
     .clock-container {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 10px 0 4px;
+      padding: 15px 0 5px;
       flex-shrink: 0;
     }
     .clock-date {
-      font-size: 17px;
-      font-weight: 500;
+      font-size: 21px;
+      font-weight: 600;
       color: var(--text-sub);
       letter-spacing: 0.5px;
-      margin-bottom: -4px;
+      margin-bottom: 2px;
     }
     .clock-time-wrap {
       display: flex;
@@ -55,32 +62,32 @@
       font-variant-numeric: tabular-nums;
     }
     .clock-time {
-      font-size: 64px;
+      font-size: clamp(74px, 20vw, 94px);
       font-weight: 300;
       color: var(--text-main);
       line-height: 1;
-      letter-spacing: -1px;
+      letter-spacing: -2px;
     }
     .clock-sec {
-      font-size: 26px;
+      font-size: clamp(30px, 8vw, 38px);
       font-weight: 400;
       color: var(--text-sub);
-      margin-left: 4px;
+      margin-left: 6px;
       line-height: 1;
     }
 
-    /* 2. ボタンエリア */
+    /* 2. ボタンエリア（画面中央配置） */
     .button-container { 
       display: flex; 
       gap: 14px; 
-      height: 28%;
-      min-height: 120px;
-      max-height: 170px;
+      height: 26%;
+      min-height: 130px;
+      max-height: 175px;
       flex-shrink: 0;
     }
     .btn-main { 
-      flex: 1; height: 100%; border: none; border-radius: 20px; 
-      font-size: 32px; font-weight: bold; color: white; cursor: pointer; 
+      flex: 1; height: 100%; border: none; border-radius: 22px; 
+      font-size: 34px; font-weight: bold; color: white; cursor: pointer; 
       display: flex; flex-direction: column; align-items: center; justify-content: center; 
       box-shadow: 0 8px 18px rgba(0,0,0,0.12); 
       transition: transform 0.1s, box-shadow 0.1s; 
@@ -88,28 +95,29 @@
     #btn-in { background: var(--in-gradient); }
     #btn-out { background: var(--out-gradient); }
     .btn-main:active { transform: scale(0.96); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-    .btn-main small { font-size: 14px; font-weight: 600; margin-top: 4px; opacity: 0.9; letter-spacing: 0.5px; }
+    .btn-main small { font-size: 15px; font-weight: 600; margin-top: 4px; opacity: 0.9; letter-spacing: 0.5px; }
 
-    /* 3. 連絡事項エリア */
+    /* 3. 連絡事項エリア（コンパクト・スクロール可） */
     .bottom-section { 
       flex: 1; 
       display: flex; 
       flex-direction: column; 
-      min-height: 0; /* flexbox内スクロール用 */
+      min-height: 90px;
+      max-height: 35%;
     }
     .announcement-container { 
       flex: 1; 
       display: flex; 
       flex-direction: column; 
       background: white; 
-      border-radius: 20px; 
-      box-shadow: 0 4px 14px rgba(0,0,0,0.05); 
+      border-radius: 18px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05); 
       overflow: hidden; 
     }
     .header-label { 
-      padding: 10px 16px; 
+      padding: 8px 14px; 
       background: #f8f9fa; 
-      font-size: 13px; 
+      font-size: 12px; 
       font-weight: bold; 
       color: #888; 
       border-bottom: 1px solid #eee; 
@@ -119,9 +127,9 @@
     }
     #announcement-text { 
       flex: 1; 
-      padding: 16px; 
-      font-size: 15px; 
-      line-height: 1.6; 
+      padding: 12px 14px; 
+      font-size: 14px; 
+      line-height: 1.5; 
       color: #333; 
       overflow-y: auto; 
       white-space: pre-wrap; 
@@ -144,14 +152,14 @@
     .success-msg { color: #fff; font-size: 26px; font-weight: bold; }
   </style>
 </head>
-<body onmousedown="resetIdleTimer()" ontouchstart="resetIdleTimer()">
+<body onmousedown="handleUserInteraction()" ontouchstart="handleUserInteraction()">
 
   <div id="error-log">⚠️ 送信エラーが発生しました！<br>管理者へ報告してください。</div>
   <div id="blackout-overlay" onclick="resetIdleTimer()"></div>
 
   <div class="app-container">
     <div id="menu-view">
-      <!-- 時計表示エリア -->
+      <!-- 1. 時計表示エリア（大サイズ） -->
       <div class="clock-container">
         <div id="clock-date" class="clock-date">----年--月--日 (--)</div>
         <div class="clock-time-wrap">
@@ -160,13 +168,13 @@
         </div>
       </div>
 
-      <!-- ボタンエリア -->
+      <!-- 2. ボタンエリア（画面中央） -->
       <div class="button-container">
         <button id="btn-in" class="btn-main" onclick="openScanner('出勤')">出勤<br><small>Clock In</small></button>
         <button id="btn-out" class="btn-main" onclick="openScanner('退勤')">退勤<br><small>Clock Out</small></button>
       </div>
 
-      <!-- 連絡事項エリア -->
+      <!-- 3. 連絡事項エリア -->
       <div class="bottom-section">
         <div class="announcement-container">
           <div class="header-label">📢 連絡事項</div>
@@ -207,6 +215,9 @@
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxwsUCs7j2M5kRTlnB3qV-3gZGWIxXt5JiTmIWYPf0IOWF4bEq9t3VzX-FvQCXVUdep/exec";
     const IDLE_TIME = 180000;
     let currentMode = '', isProcessing = false, videoStream = null, scanTimer = null, wakeLock = null, idleTimer = null;
+    let isMotionSensorInitialized = false;
+    let lastAcc = null;
+    const MOTION_THRESHOLD = 3.2; // 持ち上げ・揺れを判定する感度
     
     const video = document.getElementById('video'), overlayMsg = document.getElementById('overlay-msg'), announceArea = document.getElementById('announcement-text'), inputId = document.getElementById('input-id'), blackout = document.getElementById('blackout-overlay'), errorLog = document.getElementById('error-log');
     const clockDate = document.getElementById('clock-date'), clockTime = document.getElementById('clock-time'), clockSec = document.getElementById('clock-sec');
@@ -237,6 +248,41 @@
       clockSec.textContent = seconds;
     }
     setInterval(updateClock, 1000);
+
+    // 加速度センサー（持ち上げ検知）のハンドラ
+    function handleDeviceMotion(event) {
+      const acc = event.accelerationIncludingGravity || event.acceleration;
+      if (!acc) return;
+      if (lastAcc) {
+        const delta = Math.abs(acc.x - lastAcc.x) + Math.abs(acc.y - lastAcc.y) + Math.abs(acc.z - lastAcc.z);
+        if (delta > MOTION_THRESHOLD) {
+          resetIdleTimer(); // 動かしたら画面点灯・タイマーリセット
+        }
+      }
+      lastAcc = { x: acc.x, y: acc.y, z: acc.z };
+    }
+
+    // 初回操作時にセンサー待受を開始（iOSのパーミッションにも対応）
+    function initMotionSensor() {
+      if (isMotionSensorInitialized) return;
+      isMotionSensorInitialized = true;
+      if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+        DeviceMotionEvent.requestPermission()
+          .then(permissionState => {
+            if (permissionState === 'granted') {
+              window.addEventListener('devicemotion', handleDeviceMotion);
+            }
+          })
+          .catch(e => console.log("Motion sensor permission skip/denied", e));
+      } else {
+        window.addEventListener('devicemotion', handleDeviceMotion);
+      }
+    }
+
+    function handleUserInteraction() {
+      initMotionSensor();
+      resetIdleTimer();
+    }
 
     async function loadAnnouncement() {
       try {
