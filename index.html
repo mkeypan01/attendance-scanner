@@ -359,14 +359,14 @@
         canvas.height = video.videoHeight; canvas.width = video.videoWidth;
         const ctx = canvas.getContext('2d'); ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
-        if (code && /^\d{4}$/.test(code.data)) { isProcessing = true; if (scanTimer) clearTimeout(scanTimer); handleScan(code.data); return; }
+        if (code && /^\d{5}$/.test(code.data)) { isProcessing = true; if (scanTimer) clearTimeout(scanTimer); handleScan(code.data); return; }
       }
       if (!isProcessing && document.getElementById('scan-view').style.display === 'flex') requestAnimationFrame(tick);
     }
 
     function submitManual() {
       const val = inputId.value;
-      if (/^\d{4}$/.test(val)) { isProcessing = true; handleScan(val, true); } else { alert("4桁の数字を入力してください。"); }
+      if (/^\d{5}$/.test(val)) { isProcessing = true; handleScan(val, true); } else { alert("4桁の数字を入力してください。"); }
     }
 
     async function handleScan(staffId, isManual = false) {
