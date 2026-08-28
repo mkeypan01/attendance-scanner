@@ -6,6 +6,7 @@
   <title>出退勤スキャナー</title>
   <link rel="manifest" href="manifest.json">
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>
   <style>
     :root {
       --in-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
@@ -216,6 +217,7 @@
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyG7mJpGfICYUt39gubjT8o2fEqBlXkns0kD261BGf8N1g2w0BtzYLy2TLBwW1F_zNj/exec";
     const IDLE_TIME = 300000;
     let currentMode = '', isProcessing = false, videoStream = null, scanTimer = null, wakeLock = null, idleTimer = null;
+    let noSleep = null;
     let isMotionSensorInitialized = false;
     let lastAcc = null;
     const MOTION_THRESHOLD = 3.2;
@@ -283,6 +285,9 @@
     function handleUserInteraction() {
       initMotionSensor();
       resetIdleTimer();
+      if (noSleep && !noSleep.isEnabled) {
+        noSleep.enable().catch(() => {});
+      }
     }
 
     async function loadAnnouncement() {
@@ -293,7 +298,19 @@
       } catch (err) { console.error("Load announcement failed", err); }
     }
 
-    async function requestWakeLock() { if ('wakeLock' in navigator) { try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {} } }
+    async function requestWakeLock() {
+      if ('wakeLock' in navigator) {
+        try {
+          if (wakeLock) wakeLock.release();
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => { wakeLock = null; });
+        } catch (err) { console.log('Wake Lock failed:', err); }
+      }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') requestWakeLock();
+    });
     
     function resetIdleTimer() { 
       if(blackout) blackout.style.display = 'none'; 
@@ -306,7 +323,8 @@
     window.onload = () => { 
       updateClock(); 
       loadAnnouncement(); 
-      resetIdleTimer(); 
+      resetIdleTimer();
+      noSleep = new NoSleep();
       requestWakeLock(); 
     };
     
@@ -344,7 +362,6 @@
     function closeScanner(isManualCancel = false) {
       if (isManualCancel && sounds.cancel) sounds.cancel.play().catch(() => {});
       if (scanTimer) clearTimeout(scanTimer);
-      if (wakeLock) wakeLock.release().then(() => wakeLock = null).catch(()=>{});
       if (videoStream) { videoStream.getTracks().forEach(track => track.stop()); videoStream = null; }
       document.getElementById('menu-view').style.display = 'flex';
       document.getElementById('scan-view').style.display = 'none';
