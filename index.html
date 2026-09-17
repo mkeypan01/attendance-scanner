@@ -336,6 +336,7 @@
 
     async function openScanner(mode) {
       currentMode = mode; isProcessing = false;
+      if (errorLog) errorLog.style.display = 'none';
       document.body.classList.remove('success-flash');
       unlockAudio();
       if (mode === '出勤' && sounds.in) sounds.in.play().catch(() => {});
@@ -402,7 +403,7 @@
         overlayMsg.innerHTML = `<span class="success-msg">ID:${staffId}<br>受付完了！</span>`;
         fetch(GAS_URL, { method: "POST", mode: "cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ staffId: staffId, type: currentMode }) })
         .then(r => r.json())
-        .then(res => { if (!res.success) throw new Error(); })
+        .then(res => { if (!res.success) throw new Error(); if (errorLog) errorLog.style.display = 'none'; })
         .catch(err => { if(errorLog) errorLog.style.display = 'block'; });
         setTimeout(() => { closeScanner(); isProcessing = false; }, 1200);
       }
