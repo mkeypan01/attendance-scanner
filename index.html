@@ -330,8 +330,14 @@
     
     function unlockAudio() {
       Object.values(sounds).forEach(s => {
-        if (s && s.play) { s.play().then(() => { s.pause(); s.currentTime = 0; }).catch(e => console.log("Unlock skip", e)); }
+        if (s && s.play) { s.muted = true; s.play().catch(e => console.log("Unlock skip", e)); }
       });
+    }
+
+    function playSound(sound) {
+      if (!sound || !sound.play) return;
+      Object.values(sounds).forEach(s => { if (s && s.pause) { s.pause(); s.currentTime = 0; s.muted = false; } });
+      sound.play().catch(() => {});
     }
 
     async function openScanner(mode) {
@@ -339,8 +345,8 @@
       if (errorLog) errorLog.style.display = 'none';
       document.body.classList.remove('success-flash');
       unlockAudio();
-      if (mode === '出勤' && sounds.in) sounds.in.play().catch(() => {});
-      if (mode === '退勤' && sounds.out) sounds.out.play().catch(() => {});
+      if (mode === '出勤') playSound(sounds.in);
+      if (mode === '退勤') playSound(sounds.out);
       requestWakeLock();
       try {
         videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
@@ -349,7 +355,7 @@
         overlayMsg.innerText = mode + "QRをスキャン中...";
         video.srcObject = videoStream; video.play(); requestAnimationFrame(tick);
         scanTimer = setTimeout(() => {
-          if (sounds.timeout) sounds.timeout.play().catch(() => {});
+          playSound(sounds.timeout);
           overlayMsg.innerHTML = `<span style="color:#ffc107">タイムアウトしました。<br>メニュー画面に戻ります。</span>`;
           setTimeout(closeScanner, 2000);
         }, 30000);
@@ -361,7 +367,7 @@
     }
 
     function closeScanner(isManualCancel = false) {
-      if (isManualCancel && sounds.cancel) sounds.cancel.play().catch(() => {});
+      if (isManualCancel) playSound(sounds.cancel);
       if (scanTimer) clearTimeout(scanTimer);
       if (videoStream) { videoStream.getTracks().forEach(track => track.stop()); videoStream = null; }
       document.getElementById('menu-view').style.display = 'flex';
@@ -388,7 +394,7 @@
     }
 
     async function handleScan(staffId, isManual = false) {
-      if (sounds.success) sounds.success.play().catch(() => {});
+      playSound(sounds.success);
       document.body.classList.add('success-flash');
       if (isManual) {
         document.getElementById('manual-card-inner').innerHTML = `<div class="success-msg" style="color:#28a745">ID:${staffId}<br>記録中...</div>`;
